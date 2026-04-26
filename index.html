@@ -100,6 +100,13 @@
     padding: 16px 20px; margin-bottom: 14px;
   }
   .status-banner.cooldown { background: var(--danger); }
+  .status-banner.pulsing {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(0.99); }
+  }
   .status-banner-title {
     font-size: 11px; font-weight: 500;
     opacity: 0.7; letter-spacing: 0.05em;
@@ -872,7 +879,7 @@ function renderHome() {
     statusArea.innerHTML = `<div class="status-banner"><div class="status-banner-title">포지션 유지 중</div><div class="status-banner-value">${state.openPosition.direction === 'long' ? '롱' : '숏'} · 진입 ${state.openPosition.entryPrice || '-'}</div></div>`;
   } else if (state.pendingEntry) {
     const elapsedMin = Math.floor((now() - state.pendingEntry.ts) / 60000);
-    statusArea.innerHTML = `<div class="status-banner" onclick="askPendingReturn()" style="cursor:pointer;"><div class="status-banner-title">${elapsedMin}분 전 · 진입 시도</div><div class="status-banner-value">진입했어? 확인하기 →</div></div>`;
+    statusArea.innerHTML = `<div class="status-banner pulsing" onclick="askPendingReturn()" style="cursor:pointer; background: var(--danger);"><div class="status-banner-title">⚠️ 미확인 진입 시도</div><div class="status-banner-value">${elapsedMin}분 전 · 진입했어? 탭하기 →</div></div>`;
   }
 }
 
@@ -1388,17 +1395,66 @@ function showModal({ title, text, buttons }) {
 
 function hideModal() { document.getElementById('modal').classList.remove('active'); }
 
+/* ==================== [v0.1.1] 복귀 감지 강화 ==================== */
+// pendingEntry가 있을 때 → "진입했어?" 화면으로 자동 이동
+function checkPendingOnResume() {
+  // 최신 상태 다시 로드 (다른 곳에서 변경됐을 수 있음)
+  state = loadState();
+  if (!state.pendingEntry) return false;
+
+  // pendingEntry가 24시간 넘었으면 자동 폐기 (좀비 데이터 방지)
+  const age = now() - state.pendingEntry.ts;
+  if (age > 24 * 3600000) {
+    state.pendingEntry = null;
+    saveState();
+    return false;
+  }
+
+  const curr = document.querySelector('.screen.active')?.id;
+  // 현재 홈 화면이거나 trading-principle 화면이면 → 진입 확인 화면으로 이동
+  if (curr === 'screen-home' || curr === 'screen-trading-principle' || !curr) {
+    askPendingReturn();
+    return true;
+  }
+  return false;
+}
+
+// 1. visibilitychange (탭 전환, 앱 백그라운드↔포그라운드)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    state = loadState();
+    if (!checkPendingOnResume()) {
+      const curr = document.querySelector('.screen.active')?.id;
+      if (curr === 'screen-home') renderHome();
+    }
+  }
+});
+
+// 2. pageshow (iOS Safari가 백그라운드에서 복귀할 때 가장 안정적)
+window.addEventListener('pageshow', (e) => {
+  if (!checkPendingOnResume()) {
     const curr = document.querySelector('.screen.active')?.id;
-    if (state.pendingEntry && curr === 'screen-home') askPendingReturn();
     if (curr === 'screen-home') renderHome();
   }
 });
 
+// 3. focus (포그라운드 진입)
+window.addEventListener('focus', () => {
+  if (!checkPendingOnResume()) {
+    const curr = document.querySelector('.screen.active')?.id;
+    if (curr === 'screen-home') renderHome();
+  }
+});
+
+/* ==================== 초기 실행 ==================== */
 renderHome();
-if (state.pendingEntry) setTimeout(askPendingReturn, 300);
+
+// pendingEntry가 있으면 즉시 + 약간 지연 후 두 번 체크 (iOS 타이밍 이슈 대응)
+if (state.pendingEntry) {
+  // 즉시 시도
+  askPendingReturn();
+  // DOM 완전히 준비된 후 한 번 더
+  setTimeout(checkPendingOnResume, 100);
+}
 </script>
 </body>
 </html>
