@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LAST CHANCE">
+<meta name="theme-color" content="#F5F5F5">
+<title>LAST CHANCE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body {
+    font-family: 'Noto Sans KR', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #F5F5F5; color: #0A0A0A;
+    -webkit-font-smoothing: antialiased;
+    user-select: none; -webkit-user-select: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  input, textarea { user-select: text; -webkit-user-select: text; }
+  :root {
+    --bg: #F5F5F5; --card: #FFFFFF;
+    --ink: #0A0A0A; --ink-2: #3A3A3A; --ink-3: #8A8A8A;
+    --line: #E5E5E5;
+    --danger: #D64545; --success: #2F7A4A; --warn: #C48A00;
+    --radius: 16px; --pad: 24px;
+  }
+  .app {
+    height: 100vh; height: 100dvh;
+    display: flex; flex-direction: column;
+    max-width: 480px; margin: 0 auto; position: relative;
+  }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px var(--pad) 8px; min-height: 52px;
+  }
+  .header-back {
+    width: 36px; height: 36px; border-radius: 50%; background: #FFF;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 400; cursor: pointer; border: none; color: var(--ink);
+  }
+  .header-title {
+    font-size: 14px; font-weight: 500;
+    letter-spacing: 0.02em; color: var(--ink-2); text-transform: uppercase;
+  }
+  .header-placeholder { width: 36px; }
+  .content {
+    flex: 1; overflow-y: auto;
+    padding: 8px var(--pad) 24px; -webkit-overflow-scrolling: touch;
+  }
+  .page-title {
+    font-size: 30px; font-weight: 700;
+    letter-spacing: -0.03em; line-height: 1.1; margin: 12px 0 8px;
+  }
+  .page-subtitle {
+    font-size: 14px; font-weight: 400;
+    color: var(--ink-3); margin-bottom: 24px; line-height: 1.5;
+  }
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-3); margin: 20px 0 12px;
+  }
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 12px;
+  }
+  .card-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 6px 0;
+  }
+  .card-row-label { font-size: 13px; color: var(--ink-3); }
+  .card-row-value { font-size: 15px; font-weight: 600; }
+  .purpose-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 28px 24px; margin-bottom: 14px;
+    cursor: pointer; position: relative;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    border: 1.5px solid transparent;
+  }
+  .purpose-card:active { transform: scale(0.98); }
+  .purpose-card.disabled { opacity: 0.4; pointer-events: none; }
+  .purpose-card-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 6px; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  .purpose-card-title .arrow {
+    font-size: 20px; font-weight: 400; color: var(--ink-3);
+  }
+  .purpose-card-desc { font-size: 13px; color: var(--ink-3); line-height: 1.5; }
+  .status-banner {
+    background: var(--ink); color: #FFF;
+    border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 14px;
+  }
+  .status-banner.cooldown { background: var(--danger); }
+  .status-banner-title {
+    font-size: 11px; font-weight: 500;
+    opacity: 0.7; letter-spacing: 0.05em;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .status-banner-value { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+  .btn {
+    width: 100%; padding: 18px; border-radius: 12px;
+    font-size: 16px; font-weight: 600; border: none;
+    cursor: pointer; font-family: inherit;
+    transition: transform 0.1s ease, opacity 0.15s ease;
+    letter-spacing: -0.01em;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--ink); color: #FFF; }
+  .btn-primary:disabled { background: var(--ink-3); opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .btn-danger { background: var(--danger); color: #FFF; }
+  .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+  .choice-btn {
+    width: 100%; background: var(--card);
+    border: 1.5px solid transparent; border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 10px;
+    font-size: 15px; font-weight: 500; text-align: left;
+    cursor: pointer; font-family: inherit; color: var(--ink);
+    transition: transform 0.1s ease, border-color 0.15s ease;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .choice-btn:active { transform: scale(0.98); }
+  .choice-btn.selected { border-color: var(--ink); background: var(--ink); color: #FFF; }
+  .choice-btn .choice-desc {
+    font-size: 12px; opacity: 0.6;
+    margin-top: 4px; display: block; font-weight: 400;
+  }
+  .choice-btn .choice-arrow { color: var(--ink-3); font-weight: 300; }
+  .choice-btn.selected .choice-arrow { color: #FFF; }
+  .input-group { margin-bottom: 20px; }
+  .input-label {
+    font-size: 13px; font-weight: 500;
+    color: var(--ink-2); margin-bottom: 8px; display: block;
+  }
+  .input, .textarea {
+    width: 100%; padding: 16px 18px;
+    background: var(--card); border: 1.5px solid transparent;
+    border-radius: 12px; font-size: 16px; font-family: inherit;
+    color: var(--ink); transition: border-color 0.2s ease;
+  }
+  .input:focus, .textarea:focus { outline: none; border-color: var(--ink); }
+  .textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+  .input-hint { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+  .input-hint.danger { color: var(--danger); font-weight: 500; }
+  .input-hint.success { color: var(--success); font-weight: 500; }
+  .upload-slot {
+    background: var(--card); border: 1.5px dashed var(--line);
+    border-radius: 12px; padding: 28px 20px;
+    text-align: center; cursor: pointer;
+    margin-bottom: 10px; transition: border-color 0.2s ease;
+  }
+  .upload-slot.filled {
+    border-style: solid; border-color: var(--ink); padding: 12px;
+  }
+  .upload-slot-label {
+    font-size: 14px; font-weight: 500; color: var(--ink-2); margin-bottom: 4px;
+  }
+  .upload-slot-desc { font-size: 12px; color: var(--ink-3); }
+  .upload-slot img {
+    max-width: 100%; max-height: 180px;
+    border-radius: 8px; display: block; margin: 0 auto;
+  }
+  .upload-slot input[type=file] { display: none; }
+  .principle-box {
+    background: var(--ink); color: #FFF;
+    border-radius: var(--radius); padding: 40px 28px;
+    margin: 20px 0; text-align: center;
+    min-height: 200px; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .principle-box.danger { background: var(--danger); }
+  .principle-text {
+    font-size: 21px; font-weight: 500;
+    line-height: 1.55; letter-spacing: -0.01em;
+  }
+  .screen { display: none; height: 100%; flex-direction: column; }
+  .screen.active { display: flex; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .alert {
+    background: #FFF3F3; border: 1px solid #F5D6D6;
+    border-radius: 12px; padding: 14px 16px;
+    margin-bottom: 16px; font-size: 13px;
+    color: var(--danger); line-height: 1.5;
+  }
+  .alert.warn { background: #FFFBEA; border-color: #F5E6B8; color: var(--warn); }
+  .alert.success { background: #F0F8F3; border-color: #D0E5DA; color: var(--success); }
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 100;
+  }
+  .modal-backdrop.active { display: flex; }
+  .modal {
+    background: var(--card); border-radius: var(--radius);
+    padding: 28px 24px; max-width: 340px; width: 100%; text-align: center;
+  }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .modal-text { font-size: 14px; color: var(--ink-2); line-height: 1.5; margin-bottom: 20px; }
+  .setting-item {
+    background: var(--card); padding: 18px 20px;
+    margin-bottom: 8px; border-radius: 12px;
+    display: flex; justify-content: space-between;
+    align-items: center; cursor: pointer;
+  }
+  .setting-item-label { font-size: 15px; font-weight: 500; }
+  .setting-item-value { font-size: 14px; color: var(--ink-3); }
+  .mini-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-bottom: 14px;
+  }
+  .mini-stat {
+    background: var(--card); border-radius: 12px;
+    padding: 14px 10px; text-align: center;
+  }
+  .mini-stat-value { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .mini-stat-label {
+    font-size: 11px; color: var(--ink-3);
+    margin-top: 2px; letter-spacing: 0.02em;
+  }
+  .log-item {
+    background: var(--card); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 8px;
+  }
+  .log-item-time {
+    font-size: 11px; color: var(--ink-3);
+    margin-bottom: 4px; letter-spacing: 0.02em;
+  }
+  .log-item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .log-item-desc { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+  .log-badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 10px; font-size: 11px; font-weight: 600; margin-right: 6px;
+  }
+  .log-badge.entry { background: var(--ink); color: #FFF; }
+  .log-badge.wait { background: #EEE; color: var(--ink-2); }
+  .log-badge.profit { background: var(--success); color: #FFF; }
+  .log-badge.loss { background: var(--danger); color: #FFF; }
+  .hidden { display: none !important; }
+  ::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<div id="screen-home" class="screen active">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">LAST CHANCE</div>
+    <button class="header-back" onclick="goto('screen-settings')">⚙</button>
+  </div>
+  <div class="content">
+    <h1 class="page-title">오늘, 뭐 하러 왔어?</h1>
+    <p class="page-subtitle">이번 매매가 마지막인 것처럼 신중하게.</p>
+    <div class="mini-stats">
+      <div class="mini-stat"><div class="mini-stat-value" id="stat-entries">0</div><div class="mini-stat-label">오늘 진입</div></div>
+      <div class="mini-stat"><div class="mini-stat-value" id="stat-waits">0</div><div class="mini-stat-label">참음</div></div>
+      <div class="mini-stat"><div class="mini-stat-value" id="stat-loss">0$</div><div class="mini-stat-label">오늘 손실</div></div>
+    </div>
+    <div id="status-area"></div>
+    <div class="section-label">경로 선택</div>
+    <div class="purpose-card" id="card-trading" onclick="startTrading()">
+      <div class="purpose-card-title"><span>TRADING</span><span class="arrow">→</span></div>
+      <div class="purpose-card-desc">신규 진입. 시나리오와 손실액 필수.</div>
+    </div>
+    <div class="purpose-card" onclick="startChecking()">
+      <div class="purpose-card-title"><span>CHECKING</span><span class="arrow">→</span></div>
+      <div class="purpose-card-desc">포지션 확인 · 차트 확인.</div>
+    </div>
+    <div style="margin-top: 20px; text-align: center;">
+      <button class="btn btn-secondary" onclick="goto('screen-log')" style="padding: 12px; font-size: 14px;">기록 보기</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-trading-scenario" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goBack('screen-home')">←</button>
+    <div class="header-title">1/3 · 시나리오</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">시나리오 첨부</h1>
+    <p class="page-subtitle">TradingView 작도 + Jarvis 검증. 없으면 진입 불가.</p>
+    <div id="scenario-existing-area"></div>
+    <div id="scenario-upload-area">
+      <label class="upload-slot" id="upload-slot-1">
+        <input type="file" accept="image/*" onchange="handleUpload(event, 1)">
+        <div id="slot-1-content">
+          <div class="upload-slot-label">1 · TradingView 작도</div>
+          <div class="upload-slot-desc">차트 캡처를 탭해서 선택</div>
+        </div>
+      </label>
+      <label class="upload-slot" id="upload-slot-2">
+        <input type="file" accept="image/*" onchange="handleUpload(event, 2)">
+        <div id="slot-2-content">
+          <div class="upload-slot-label">2 · Jarvis 검증</div>
+          <div class="upload-slot-desc">Claude 채팅 캡처를 탭해서 선택</div>
+        </div>
+      </label>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="scenario-next-btn" onclick="proceedToRisk()" disabled>다음</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-trading-risk" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-trading-scenario')">←</button>
+    <div class="header-title">2/3 · 손실액</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">예상 손실액</h1>
+    <p class="page-subtitle" id="risk-limit-desc">시드의 5%를 넘으면 진입할 수 없어.</p>
+    <div id="risk-alert-area"></div>
+    <div class="input-group">
+      <label class="input-label">스탑로스까지 예상 손실 ($)</label>
+      <input type="number" class="input" id="input-loss-amount" placeholder="예: 150" oninput="checkRisk()">
+      <div class="input-hint" id="risk-hint">입력하면 한도 체크가 돼.</div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">진입 방향</label>
+      <div style="display: flex; gap: 10px;">
+        <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="dir-long" onclick="selectDirection('long')">롱 ↑</button>
+        <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="dir-short" onclick="selectDirection('short')">숏 ↓</button>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="risk-next-btn" onclick="proceedToPrinciple()" disabled>다음</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-trading-principle" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-trading-risk')">←</button>
+    <div class="header-title">3/3 · 원칙</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">명심해</h1>
+    <p class="page-subtitle">이 원칙을 읽고 비트겟으로 들어가.</p>
+    <div class="principle-box" id="trading-principle-box">
+      <div class="principle-text" id="trading-principle-text"></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="bitget-launch-btn" onclick="launchBitget()">비트겟 열기</button>
+      <button class="btn btn-secondary" onclick="confirmCancel()">취소</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-checking" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goBack('screen-home')">←</button>
+    <div class="header-title">CHECKING</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">잠깐.</h1>
+    <p class="page-subtitle">들어가기 전에 한 번 읽고 가자.</p>
+    <div class="principle-box">
+      <div class="principle-text" id="checking-principle-text"></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="launchBitgetFromChecking()">비트겟 열기</button>
+      <button class="btn btn-secondary" onclick="goBack('screen-home')">뒤로</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-return-trading" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">확인</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">진입했어?</h1>
+    <p class="page-subtitle" id="return-trading-subtitle">아까 시도한 진입, 어떻게 됐어?</p>
+    <button class="choice-btn" onclick="confirmEntered()"><span>✓ 진입했어</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="confirmWaited()"><span>✗ 참았어</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="forgotReturn()" style="margin-top: 16px; color: var(--ink-3);"><span>기억 안 나</span><span class="choice-arrow">→</span></button>
+  </div>
+</div>
+
+<div id="screen-tp-sl" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">TP / SL</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">목표 · 스탑 입력</h1>
+    <p class="page-subtitle">입력해야 포지션 상태로 전환돼.</p>
+    <div class="input-group">
+      <label class="input-label">진입가</label>
+      <input type="text" class="input" id="input-entry-price" placeholder="예: 62150">
+    </div>
+    <div class="input-group">
+      <label class="input-label">목표가 (TP)</label>
+      <input type="text" class="input" id="input-tp" placeholder="예: 63800">
+    </div>
+    <div class="input-group">
+      <label class="input-label">손절가 (SL)</label>
+      <input type="text" class="input" id="input-sl" placeholder="예: 61500">
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveTPSL()">저장 · 피드백</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-entry-feedback" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">기록 완료</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">들어갔어.</h1>
+    <p class="page-subtitle">이제 네 차례가 아니야. 시장의 차례야.</p>
+    <div class="card">
+      <div class="card-row"><span class="card-row-label">방향</span><span class="card-row-value" id="fb-dir">-</span></div>
+      <div class="card-row"><span class="card-row-label">진입가</span><span class="card-row-value" id="fb-entry">-</span></div>
+      <div class="card-row"><span class="card-row-label">TP / SL</span><span class="card-row-value" id="fb-tpsl">-</span></div>
+      <div class="card-row"><span class="card-row-label">예상 손실</span><span class="card-row-value" id="fb-loss">-</span></div>
+    </div>
+    <div class="principle-box"><div class="principle-text" id="entry-feedback-principle"></div></div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="finishEntry()">종료</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-wait-reason" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">참음</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">잘했어.</h1>
+    <p class="page-subtitle">왜 참았는지 기록하자. 다음에 도움이 돼.</p>
+    <button class="choice-btn" onclick="saveWait('기다림')"><span>기다림<span class="choice-desc">조건 미충족, 좋은 자리 대기</span></span></button>
+    <button class="choice-btn" onclick="saveWait('놓침')"><span>놓침<span class="choice-desc">자리 맞았는데 못 들어감</span></span></button>
+    <button class="choice-btn" onclick="saveWait('다른생각발견')"><span>다른 생각 발견<span class="choice-desc">시나리오 보강 필요</span></span></button>
+    <button class="choice-btn" onclick="saveWait('시나리오틀림')"><span>시나리오 틀림<span class="choice-desc">방향 자체 재평가</span></span></button>
+  </div>
+</div>
+
+<div id="screen-fomo-pledge" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">다짐</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">약속해줘.</h1>
+    <p class="page-subtitle">네 선택을 존중해. 이후 시세는 네 책임이 아니야.</p>
+    <div class="principle-box">
+      <div class="principle-text">"나는 이 근거로 진입하지 않았다.<br>이후 시세가 어떻게 가든<br>내 선택을 존중한다.<br>포모에 흔들리지 않는다."</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="finishWait()">약속합니다</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-return-checking" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">포지션 확인</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">변동 있어?</h1>
+    <p class="page-subtitle">포지션 상태를 알려줘.</p>
+    <button class="choice-btn" onclick="goto('screen-position-action')"><span>변동 있음</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="goto('screen-home')"><span>변동 없음</span><span class="choice-arrow">→</span></button>
+  </div>
+</div>
+
+<div id="screen-position-action" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-return-checking')">←</button>
+    <div class="header-title">액션</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">뭐 할래?</h1>
+    <p class="page-subtitle">선택에 따라 다른 경로로 가.</p>
+    <button class="choice-btn" onclick="goto('screen-tpsl-edit')"><span>TP/SL 수정</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="goto('screen-close-choice')"><span>포지션 종료</span><span class="choice-arrow">→</span></button>
+  </div>
+</div>
+
+<div id="screen-tpsl-edit" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-position-action')">←</button>
+    <div class="header-title">TP/SL 수정</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">왜 바꿔?</h1>
+    <p class="page-subtitle">원래 시나리오 벗어나는지 스스로 확인해.</p>
+    <div class="alert warn">💡 스탑을 미는 순간, 원칙이 죽어. 확신 있어?</div>
+    <div class="input-group">
+      <label class="input-label">새 TP (변경 시만)</label>
+      <input type="text" class="input" id="edit-tp" placeholder="기존값 유지하려면 비워둬">
+    </div>
+    <div class="input-group">
+      <label class="input-label">새 SL (변경 시만)</label>
+      <input type="text" class="input" id="edit-sl" placeholder="기존값 유지하려면 비워둬">
+    </div>
+    <div class="input-group">
+      <label class="input-label">변경 이유 (필수)</label>
+      <textarea class="textarea" id="edit-reason" placeholder="한 줄로 이유를 써."></textarea>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveEditTPSL()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-close-choice" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-position-action')">←</button>
+    <div class="header-title">청산</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">결과는?</h1>
+    <p class="page-subtitle">마음 급하지 않게, 차분히.</p>
+    <button class="choice-btn" onclick="goto('screen-close-profit')"><span style="color: var(--success);">+ 익절</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="goto('screen-close-loss')"><span style="color: var(--danger);">− 손절</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="goto('screen-close-even')"><span>= 본절</span><span class="choice-arrow">→</span></button>
+  </div>
+</div>
+
+<div id="screen-close-profit" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-close-choice')">←</button>
+    <div class="header-title">익절</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">잘했어.</h1>
+    <p class="page-subtitle">수익 금액과 이유를 간단히 적어둬.</p>
+    <div class="input-group">
+      <label class="input-label">수익 ($)</label>
+      <input type="number" class="input" id="profit-amount" placeholder="예: 200">
+    </div>
+    <div class="input-group">
+      <label class="input-label">이유 / 복기</label>
+      <textarea class="textarea" id="profit-reason" placeholder="어떻게 좋았는지 한 줄"></textarea>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveClose('profit')">저장 · 종료</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-close-loss" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-close-choice')">←</button>
+    <div class="header-title">손절</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">괜찮아.</h1>
+    <p class="page-subtitle">손절은 생명이야. 기록하고 냉각기로.</p>
+    <div class="input-group">
+      <label class="input-label">손실 ($)</label>
+      <input type="number" class="input" id="loss-amount" placeholder="예: 150">
+    </div>
+    <div class="input-group">
+      <label class="input-label">이유</label>
+      <textarea class="textarea" id="loss-reason" placeholder="무엇이 아니었는지 한 줄"></textarea>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-danger" onclick="saveClose('loss')">저장 · 냉각기 시작</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-close-even" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goto('screen-close-choice')">←</button>
+    <div class="header-title">본절</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">본절.</h1>
+    <p class="page-subtitle">짧게 기록하고 넘어가.</p>
+    <div class="input-group">
+      <label class="input-label">이유</label>
+      <textarea class="textarea" id="even-reason" placeholder="왜 본절 처리했나"></textarea>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveClose('even')">저장 · 종료</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-cooldown" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">냉각기</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title" style="color: var(--danger);">30분 휴식</h1>
+    <p class="page-subtitle">이 시간 동안 신규 진입은 잠겨. CHECKING은 가능.</p>
+    <div class="principle-box danger">
+      <div class="principle-text">"복구 심리가 조금이라도 생겼다고 느껴지면<br>즉시 차트를 끄고 휴식한다."</div>
+    </div>
+    <div style="text-align: center; margin: 20px 0;">
+      <div style="font-size: 48px; font-weight: 700; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;" id="cooldown-timer">30:00</div>
+      <div style="font-size: 13px; color: var(--ink-3); margin-top: 6px;">남은 시간</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="goto('screen-home')">홈으로</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-log" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goBack('screen-home')">←</button>
+    <div class="header-title">기록</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">기록</h1>
+    <p class="page-subtitle">최근 50건. 주간 리포트는 다음 업데이트에.</p>
+    <div id="log-list"></div>
+  </div>
+</div>
+
+<div id="screen-settings" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goBack('screen-home')">←</button>
+    <div class="header-title">설정</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">설정</h1>
+    <div class="section-label">계정</div>
+    <div class="setting-item" onclick="editSeed()">
+      <span class="setting-item-label">전체 시드 ($)</span>
+      <span class="setting-item-value" id="setting-seed">미설정</span>
+    </div>
+    <div class="setting-item" onclick="editRiskPct()">
+      <span class="setting-item-label">일일 손실 한도</span>
+      <span class="setting-item-value" id="setting-risk">5%</span>
+    </div>
+    <div class="section-label">앱</div>
+    <div class="setting-item" onclick="exportData()">
+      <span class="setting-item-label">데이터 내보내기</span>
+      <span class="setting-item-value">JSON ↓</span>
+    </div>
+    <div class="setting-item" onclick="importData()">
+      <span class="setting-item-label">데이터 가져오기</span>
+      <span class="setting-item-value">JSON ↑</span>
+    </div>
+    <div class="setting-item" onclick="confirmReset()">
+      <span class="setting-item-label" style="color: var(--danger);">모든 기록 초기화</span>
+      <span class="setting-item-value">→</span>
+    </div>
+    <div style="margin-top: 30px; text-align: center; color: var(--ink-3); font-size: 11px; letter-spacing: 0.05em;">
+      LAST CHANCE v0.1<br>built by Alex, Jin, Mia, Sara, Leo
+    </div>
+    <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="handleImport(event)">
+  </div>
+</div>
+
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-text" id="modal-text"></div>
+    <div id="modal-buttons" class="btn-group" style="margin-top: 0;"></div>
+  </div>
+</div>
+
+<script>
+const PRINCIPLES = {
+  meta: [
+    "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
+    "자기 과신을 경계하고 메타인지를 높여라.",
+    "차트 분석보다 메타인지 하는 것이 3배 더 어렵다.",
+    "무의식에 마주하기 싫은 진짜 나와 마주하는 습관을 들여라.",
+    "내 판단을 확신하지 말고 끊임없이 의심하며, 이상 감지 시 빠르게 대응해 손절하라.",
+    "내가 지금 도박처럼 매매하고 있지는 않은지 매 순간 자기 객관화를 수행한다.",
+    "관점이 틀린 것을 인지한 직후의 행동이 계좌의 우상향을 결정함을 명심한다.",
+    "운 좋게 손절 없이 살아 돌아온 성공 경험이 오판을 만들지 않도록 경계한다.",
+    "판단이나 익절 타이밍이 한 박자씩 늦어지기 시작하면 매매를 쉬고 재정비한다.",
+    "'보고 싶은 상황'만 설정하고 차트를 끼워 맞추는 확증 편향을 경계한다.",
+    "기준이 명확하지 않은 탐욕의 장에는 끼어들지 마라.",
+    "거래 일지를 작성하여 매일의 판단과 결과를 기록하고 복기한다.",
+  ],
+  risk: [
+    "포지션 진입 전 30분~1시간은 관찰하며 일부 금액만 진입하라.",
+    "포지션을 잡기 전 내가 얼마나 손실을 볼지 미리 계산하라.",
+    "시장의 노이즈를 완벽히 구분할 수 없으므로 손절을 생명처럼 여겨라.",
+    "리스크의 기본 속성은 '알 수 없음'에 있다는 것을 명심하라.",
+    "손실 회피 성향을 거슬러, 잘될 때 더 크게 안될 때 더 작게 비중을 조절하라.",
+    "수익보다 손실 관리가 중요하다. 리스크 없는 싸움을 끊임없이 고민하라.",
+    "풀시드, 고배율, 노스탑, 물타기식의 감정적인 물량 조절은 절대 금지한다.",
+    "핵심 매물대 같은 심리 충돌 구간에서는 매매하지 않고 방향성이 나올 때까지 관망한다.",
+    "자산이 0으로 수렴할 가능성이 있는 행동은 단 1%라도 하지 않는다.",
+    "집을 나서기 전 목적지를 정하듯, 진입 전 익절/손절 구간을 확정한다.",
+    "이미 얻은 수익금은 다시 베팅할 돈이 아니라, 내 자산을 지키는 '방어금'으로 간주한다.",
+    "무리한 목표 수익률을 설정하기보다 시장이 주는 만큼만 챙긴다는 겸손함을 갖는다.",
+    "기대수익만 줄이면 그만이다.",
+    "빠른 손절을 통해 복구 심리를 통제하라.",
+  ],
+  entry: [
+    "시장이 내 판단과 다르게 움직인다면 비이성적인 상태임을 인정하고 즉각적인 추가 진입을 삼가라.",
+    "시나리오를 작성하고 그 시나리오대로 진행될 때만 매매한다.",
+    "반익절은 가급적 지양한다. 운에 기대는 습관이 장기적으로 독이 될 수 있다.",
+    "매매 중 탐욕이 올라오지 않도록 다음 단계의 플랜을 미리 구체화해 둔다.",
+    "모든 진입은 전문가들 앞에서도 합리적 근거를 설명할 수 있을 때만 한다.",
+    "실제로 돈을 벌고 있는 주체의 움직임을 포착하고 그 흐름에 올라탄다.",
+    "하락 돌파 실패나 매도 물량 감소 등 '하락 심리 해소'를 확인한 뒤 진입한다.",
+    "수급 유입이나 실망 매물이 쏟아질 수 있는 '심리적 매물대'를 최우선으로 찾는다.",
+    "롱과 숏의 근거를 각각 나열해 본 뒤, 확률적으로 더 우세한 방향에 베팅한다.",
+    "평소와 다른 이례적인 거래량이 터진 지점을 가장 강력한 기준선으로 삼는다.",
+    "세력이 이미 사용한 카드와 아직 남겨둔 카드가 무엇인지 시나리오를 짠다.",
+    "나만의 높은 승률 구간을 정의하고, 그 구역에서만 승부한다.",
+    "기준선 근처에서 방향이 확실치 않을 때 잦은 스위칭으로 시드를 낭비하지 않는다.",
+    "5분봉이나 3분봉에서 선발대의 움직임과 수급 신호를 복합적으로 체크한다.",
+    "포지션마다 독립적인 전략과 시나리오를 적용하여 개별적으로 관리한다.",
+  ],
+  emotion: [
+    "자신감 상실은 푹 자고 일어나서 회복하라.",
+    "계획이 어긋나는 것을 유연하게 받아들여라.",
+    "투자는 지식보다 지혜의 영역에 가깝다.",
+    "손실 중에도 위축되지 않고 평정심을 유지하며, 지나간 상황에 연연하지 않는다.",
+    "가격이 '언젠가 다시 돌아올 것'이라는 근거 없는 희망 회로를 완전히 제거한다.",
+    "투자를 운에 맡기는 투기가 아닌, 확률에 근거한 비즈니스로 대한다.",
+    "복구 심리가 조금이라도 생겼다고 느껴지면 즉시 차트를 끄고 휴식한다.",
+    "큰 손실 직후의 다음 매매가 가장 위험하다. 한 박자 쉬고 시작한다.",
+    "자만과 공포, 두 감정 모두 매매의 적이다. 평정심이 생명이다.",
+    "기대수익만 줄이면 그만이다. 오늘 못 벌면 내일 번다.",
+  ],
+  philosophy: [
+    "원칙은 차트 앞이 아닌 공원처럼 차트가 없는 상태에서 정하라.",
+    "매일 달라지는 상황을 다르게 이해하라. 어제의 차트 대입 금지.",
+    "기상 직후 시장에서 일어난 사건을 독립적인 시선에서 2가지 이상 분석하라.",
+    "수익의 속도보다는 올바른 방향을 설정하는 것에 우선순위를 둔다.",
+    "미래를 예측하려 고집하지 말고, 시장의 흐름에 따라 생각을 유동적으로 바꾼다.",
+    "지표는 후행성임을 인정하고, 지표가 고점/저점을 가리켜도 시장 위치를 먼저 본다.",
+    "캔들의 모양 자체보다 그 이면에 담긴 시장 참여자들의 의도를 읽으려 노력한다.",
+    "뉴스나 주변의 소음보다는 차트와 수급이라는 객관적 데이터에 집중한다.",
+    "시장은 언제나 옳으며, 틀린 것은 시장이 아니라 나의 대응임을 잊지 않는다.",
+  ]
+};
+
+const COOLDOWN_PRINCIPLE = "복구 심리가 조금이라도 생겼다고 느껴지면 즉시 차트를 끄고 휴식한다.";
+const STORE_KEY = 'lastchance_v1';
+
+function defaultState() {
+  return {
+    seed: null, riskPct: 5,
+    scenario: { images: [null, null], uploadedAt: null, expiresAt: null },
+    pendingEntry: null, openPosition: null, cooldownUntil: null,
+    records: [], dailyStats: {},
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return defaultState();
+    return { ...defaultState(), ...JSON.parse(raw) };
+  } catch (e) { return defaultState(); }
+}
+
+function saveState() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+let state = loadState();
+
+function now() { return Date.now(); }
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+function formatTime(ts) {
+  return new Date(ts).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+function formatMinSec(ms) {
+  if (ms < 0) ms = 0;
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+function getDailyStat() {
+  const k = todayKey();
+  if (!state.dailyStats[k]) state.dailyStats[k] = { entries: 0, waits: 0, loss: 0 };
+  return state.dailyStats[k];
+}
+function addRecord(type, data = {}) {
+  const rec = { id: 'r_' + now() + '_' + Math.random().toString(36).slice(2, 7), type, ts: now(), ...data };
+  state.records.unshift(rec);
+  if (state.records.length > 200) state.records = state.records.slice(0, 200);
+  saveState();
+  return rec;
+}
+function randomPrinciple(buckets = ['meta', 'risk', 'entry', 'emotion', 'philosophy']) {
+  const pool = [];
+  buckets.forEach(b => { if (PRINCIPLES[b]) pool.push(...PRINCIPLES[b]); });
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+const screenHistory = [];
+function goto(id, pushHistory = true) {
+  const current = document.querySelector('.screen.active');
+  if (current && pushHistory) screenHistory.push(current.id);
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) {
+    target.classList.add('active');
+    const c = target.querySelector('.content');
+    if (c) c.scrollTop = 0;
+  }
+  if (id === 'screen-home') renderHome();
+  if (id === 'screen-log') renderLog();
+  if (id === 'screen-settings') renderSettings();
+  if (id === 'screen-cooldown') startCooldownTimer();
+}
+function goBack(fallback) {
+  const prev = screenHistory.pop();
+  if (prev) goto(prev, false);
+  else if (fallback) goto(fallback, false);
+  else goto('screen-home', false);
+}
+
+function renderHome() {
+  const s = getDailyStat();
+  document.getElementById('stat-entries').textContent = s.entries;
+  document.getElementById('stat-waits').textContent = s.waits;
+  document.getElementById('stat-loss').textContent = `${s.loss.toFixed(0)}$`;
+  const statusArea = document.getElementById('status-area');
+  statusArea.innerHTML = '';
+  const tradingCard = document.getElementById('card-trading');
+  tradingCard.classList.remove('disabled');
+
+  if (state.cooldownUntil && state.cooldownUntil > now()) {
+    const rem = state.cooldownUntil - now();
+    statusArea.innerHTML = `<div class="status-banner cooldown"><div class="status-banner-title">냉각기</div><div class="status-banner-value">${formatMinSec(rem)} 남음 · 신규 진입 잠김</div></div>`;
+    tradingCard.classList.add('disabled');
+    clearTimeout(window._homeRefresh);
+    window._homeRefresh = setTimeout(renderHome, 1000);
+  } else if (state.seed && s.loss >= (state.seed * state.riskPct / 100)) {
+    statusArea.innerHTML = `<div class="status-banner cooldown"><div class="status-banner-title">일일 한도 도달</div><div class="status-banner-value">오늘은 여기까지. 내일 다시.</div></div>`;
+    tradingCard.classList.add('disabled');
+  } else if (state.openPosition) {
+    statusArea.innerHTML = `<div class="status-banner"><div class="status-banner-title">포지션 유지 중</div><div class="status-banner-value">${state.openPosition.direction === 'long' ? '롱' : '숏'} · 진입 ${state.openPosition.entryPrice || '-'}</div></div>`;
+  } else if (state.pendingEntry) {
+    const elapsedMin = Math.floor((now() - state.pendingEntry.ts) / 60000);
+    statusArea.innerHTML = `<div class="status-banner" onclick="askPendingReturn()" style="cursor:pointer;"><div class="status-banner-title">${elapsedMin}분 전 · 진입 시도</div><div class="status-banner-value">진입했어? 확인하기 →</div></div>`;
+  }
+}
+
+function startTrading() {
+  const hasValid = state.scenario.expiresAt && state.scenario.expiresAt > now() && state.scenario.images[0] && state.scenario.images[1];
+  goto('screen-trading-scenario');
+  if (hasValid) renderScenarioExisting();
+  else renderScenarioFresh();
+}
+
+function renderScenarioExisting() {
+  const area = document.getElementById('scenario-existing-area');
+  const btn = document.getElementById('scenario-next-btn');
+  const hoursLeft = Math.floor((state.scenario.expiresAt - now()) / 3600000);
+  area.innerHTML = `
+    <div class="alert success">✓ 오늘 시나리오가 있어 (${hoursLeft}시간 남음).<br>그대로 쓸지 업데이트할지 골라.</div>
+    <div class="card">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <img src="${state.scenario.images[0]}" style="width:50%; max-height:120px; object-fit:cover; border-radius:8px;">
+        <img src="${state.scenario.images[1]}" style="width:50%; max-height:120px; object-fit:cover; border-radius:8px;">
+      </div>
+      <button class="btn btn-primary" style="padding:14px; font-size:14px;" onclick="useExistingScenario()">이 시나리오 그대로 쓰기</button>
+      <button class="btn btn-secondary" style="padding:14px; font-size:14px; margin-top:8px;" onclick="updateScenario()">업데이트 (새 캡처)</button>
+    </div>
+    <div class="section-label">또는 새 캡처 첨부</div>`;
+  btn.disabled = true;
+  tempUploads = [null, null];
+  refreshUploadSlots();
+}
+
+function renderScenarioFresh() {
+  document.getElementById('scenario-existing-area').innerHTML = '';
+  document.getElementById('scenario-next-btn').disabled = true;
+  tempUploads = [null, null];
+  refreshUploadSlots();
+}
+
+function useExistingScenario() {
+  tempUploads = [state.scenario.images[0], state.scenario.images[1]];
+  goto('screen-trading-risk');
+  renderRiskScreen();
+}
+function updateScenario() {
+  state.scenario = { images: [null, null], uploadedAt: null, expiresAt: null };
+  saveState();
+  renderScenarioFresh();
+}
+
+let tempUploads = [null, null];
+function handleUpload(event, slotNum) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    compressImage(e.target.result, 1200, 0.85).then(compressed => {
+      tempUploads[slotNum - 1] = compressed;
+      refreshUploadSlots();
+      checkScenarioReady();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function compressImage(dataUrl, maxWidth, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function refreshUploadSlots() {
+  [1, 2].forEach(n => {
+    const slot = document.getElementById(`upload-slot-${n}`);
+    const content = document.getElementById(`slot-${n}-content`);
+    if (tempUploads[n - 1]) {
+      slot.classList.add('filled');
+      content.innerHTML = `<img src="${tempUploads[n - 1]}">`;
+    } else {
+      slot.classList.remove('filled');
+      const label = n === 1 ? 'TradingView 작도' : 'Jarvis 검증';
+      content.innerHTML = `<div class="upload-slot-label">${n} · ${label}</div><div class="upload-slot-desc">차트 캡처를 탭해서 선택</div>`;
+    }
+  });
+}
+
+function checkScenarioReady() {
+  document.getElementById('scenario-next-btn').disabled = !(tempUploads[0] && tempUploads[1]);
+}
+
+function proceedToRisk() {
+  if (!tempUploads[0] || !tempUploads[1]) return;
+  state.scenario = { images: tempUploads.slice(), uploadedAt: now(), expiresAt: now() + 24 * 3600000 };
+  saveState();
+  goto('screen-trading-risk');
+  renderRiskScreen();
+}
+
+let tempDirection = null;
+function renderRiskScreen() {
+  tempDirection = null;
+  document.getElementById('input-loss-amount').value = '';
+  document.getElementById('risk-hint').textContent = '입력하면 한도 체크가 돼.';
+  document.getElementById('risk-hint').className = 'input-hint';
+  document.getElementById('risk-next-btn').disabled = true;
+  document.getElementById('risk-alert-area').innerHTML = '';
+  document.getElementById('dir-long').classList.remove('selected');
+  document.getElementById('dir-short').classList.remove('selected');
+  const limit = state.seed ? (state.seed * state.riskPct / 100).toFixed(0) : null;
+  const used = getDailyStat().loss;
+  const remaining = limit ? (limit - used).toFixed(0) : null;
+  const desc = document.getElementById('risk-limit-desc');
+  if (!state.seed) {
+    desc.innerHTML = '⚠️ 시드 미설정. 설정에서 먼저 입력해.';
+    document.getElementById('risk-alert-area').innerHTML = `<div class="alert warn">시드를 설정해야 한도 체크가 작동해.</div>`;
+  } else {
+    desc.textContent = `시드 $${state.seed} · 일일 한도 $${limit} · 남은 한도 $${remaining}`;
+  }
+}
+
+function checkRisk() {
+  const val = parseFloat(document.getElementById('input-loss-amount').value);
+  const hint = document.getElementById('risk-hint');
+  const btn = document.getElementById('risk-next-btn');
+  if (!val || val <= 0) {
+    hint.textContent = '입력하면 한도 체크가 돼.';
+    hint.className = 'input-hint';
+    btn.disabled = true;
+    return;
+  }
+  if (state.seed) {
+    const limit = state.seed * state.riskPct / 100;
+    const used = getDailyStat().loss;
+    const remaining = limit - used;
+    if (val > remaining) {
+      hint.textContent = `⚠️ 오늘 남은 한도 $${remaining.toFixed(0)}를 초과해. 진입 불가.`;
+      hint.className = 'input-hint danger';
+      btn.disabled = true;
+      return;
+    } else {
+      hint.textContent = `✓ 한도 내 · 남은 한도 $${(remaining - val).toFixed(0)}`;
+      hint.className = 'input-hint success';
+    }
+  }
+  btn.disabled = !tempDirection;
+}
+
+function selectDirection(dir) {
+  tempDirection = dir;
+  document.getElementById('dir-long').classList.toggle('selected', dir === 'long');
+  document.getElementById('dir-short').classList.toggle('selected', dir === 'short');
+  checkRisk();
+}
+
+function proceedToPrinciple() {
+  const val = parseFloat(document.getElementById('input-loss-amount').value);
+  if (!val || !tempDirection) return;
+  state.pendingEntry = {
+    ts: now(), direction: tempDirection,
+    expectedLoss: val, scenario: state.scenario.images.slice(),
+  };
+  saveState();
+  document.getElementById('trading-principle-text').textContent = randomPrinciple(['risk', 'entry']);
+  goto('screen-trading-principle');
+}
+
+function launchBitget() {
+  addRecord('entry_attempt', {
+    direction: state.pendingEntry.direction,
+    expectedLoss: state.pendingEntry.expectedLoss,
+  });
+  window.location.href = 'bitget://';
+  setTimeout(() => { goto('screen-home'); }, 1500);
+}
+
+function launchBitgetFromChecking() {
+  addRecord('checking', {});
+  window.location.href = 'bitget://';
+  setTimeout(() => { goto('screen-home'); }, 1500);
+}
+
+function confirmCancel() {
+  showModal({
+    title: '정말 취소할래?',
+    text: '진입 시도 기록은 남지 않아.',
+    buttons: [
+      { label: '계속', class: 'btn-secondary', onClick: hideModal },
+      { label: '취소하기', class: 'btn-danger', onClick: () => {
+        state.pendingEntry = null;
+        saveState();
+        hideModal();
+        goto('screen-home');
+      }}
+    ]
+  });
+}
+
+function startChecking() {
+  const p = state.openPosition
+    ? randomPrinciple(['meta', 'philosophy', 'emotion'])
+    : randomPrinciple(['meta', 'philosophy']);
+  document.getElementById('checking-principle-text').textContent = p;
+  goto('screen-checking');
+}
+
+function askPendingReturn() {
+  goto('screen-return-trading');
+  const mins = Math.floor((now() - state.pendingEntry.ts) / 60000);
+  let msg;
+  if (mins < 30) msg = `${mins}분 전 진입 시도, 어떻게 됐어?`;
+  else if (mins < 180) msg = `${mins}분 전 진입 시도가 있었어. 들어갔어?`;
+  else {
+    const hrs = Math.floor(mins / 60);
+    msg = `${hrs}시간 전 진입 시도가 있었어. 기억나?`;
+  }
+  document.getElementById('return-trading-subtitle').textContent = msg;
+}
+
+function forgotReturn() {
+  showModal({
+    title: '기억이 안 나?',
+    text: '괜찮아. 일단 이 시도는 폐기할게. 다시 매매할 땐 새로 시작해.',
+    buttons: [
+      { label: '취소', class: 'btn-secondary', onClick: hideModal },
+      { label: '폐기', class: 'btn-danger', onClick: () => {
+        state.pendingEntry = null;
+        saveState();
+        addRecord('entry_forgotten', {});
+        hideModal();
+        goto('screen-home');
+      }}
+    ]
+  });
+}
+
+function confirmEntered() {
+  goto('screen-tp-sl');
+  document.getElementById('input-entry-price').value = '';
+  document.getElementById('input-tp').value = '';
+  document.getElementById('input-sl').value = '';
+}
+
+function saveTPSL() {
+  const entry = document.getElementById('input-entry-price').value.trim();
+  const tp = document.getElementById('input-tp').value.trim();
+  const sl = document.getElementById('input-sl').value.trim();
+  if (!entry || !tp || !sl) { alert('진입가, TP, SL 모두 입력해줘.'); return; }
+  state.openPosition = {
+    ...state.pendingEntry,
+    entryPrice: entry, tp, sl, confirmedAt: now(),
+  };
+  state.pendingEntry = null;
+  getDailyStat().entries += 1;
+  saveState();
+  addRecord('entry', {
+    direction: state.openPosition.direction,
+    entryPrice: entry, tp, sl,
+    expectedLoss: state.openPosition.expectedLoss,
+  });
+  document.getElementById('fb-dir').textContent = state.openPosition.direction === 'long' ? '롱 ↑' : '숏 ↓';
+  document.getElementById('fb-entry').textContent = entry;
+  document.getElementById('fb-tpsl').textContent = `${tp} / ${sl}`;
+  document.getElementById('fb-loss').textContent = `$${state.openPosition.expectedLoss}`;
+  document.getElementById('entry-feedback-principle').textContent = randomPrinciple(['entry', 'emotion']);
+  goto('screen-entry-feedback');
+}
+
+function finishEntry() { goto('screen-home'); }
+
+function confirmWaited() { goto('screen-wait-reason'); }
+
+function saveWait(reason) {
+  addRecord('wait', { reason, direction: state.pendingEntry?.direction });
+  getDailyStat().waits += 1;
+  state.pendingEntry = null;
+  saveState();
+  goto('screen-fomo-pledge');
+}
+
+function finishWait() { goto('screen-home'); }
+
+function saveEditTPSL() {
+  const tp = document.getElementById('edit-tp').value.trim();
+  const sl = document.getElementById('edit-sl').value.trim();
+  const reason = document.getElementById('edit-reason').value.trim();
+  if (!reason) { alert('변경 이유는 필수야.'); return; }
+  const prev = { tp: state.openPosition.tp, sl: state.openPosition.sl };
+  if (tp) state.openPosition.tp = tp;
+  if (sl) state.openPosition.sl = sl;
+  saveState();
+  addRecord('tpsl_edit', { prev, new: { tp: state.openPosition.tp, sl: state.openPosition.sl }, reason });
+  document.getElementById('edit-tp').value = '';
+  document.getElementById('edit-sl').value = '';
+  document.getElementById('edit-reason').value = '';
+  goto('screen-home');
+}
+
+function saveClose(type) {
+  let amount = 0, reason = '';
+  if (type === 'profit') {
+    amount = parseFloat(document.getElementById('profit-amount').value) || 0;
+    reason = document.getElementById('profit-reason').value.trim();
+  } else if (type === 'loss') {
+    amount = parseFloat(document.getElementById('loss-amount').value) || 0;
+    reason = document.getElementById('loss-reason').value.trim();
+  } else {
+    reason = document.getElementById('even-reason').value.trim();
+  }
+  addRecord('close_' + type, {
+    direction: state.openPosition?.direction,
+    amount, reason, position: state.openPosition,
+  });
+  if (type === 'loss') {
+    getDailyStat().loss += amount;
+    state.cooldownUntil = now() + 30 * 60000;
+  }
+  state.openPosition = null;
+  saveState();
+  ['profit-amount','profit-reason','loss-amount','loss-reason','even-reason'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  if (type === 'loss') goto('screen-cooldown');
+  else goto('screen-home');
+}
+
+let cooldownInterval = null;
+function startCooldownTimer() {
+  if (cooldownInterval) clearInterval(cooldownInterval);
+  updateCooldownDisplay();
+  cooldownInterval = setInterval(updateCooldownDisplay, 1000);
+}
+function updateCooldownDisplay() {
+  const el = document.getElementById('cooldown-timer');
+  if (!el || !state.cooldownUntil) return;
+  const rem = state.cooldownUntil - now();
+  if (rem <= 0) {
+    el.textContent = '0:00';
+    clearInterval(cooldownInterval);
+    state.cooldownUntil = null;
+    saveState();
+    return;
+  }
+  el.textContent = formatMinSec(rem);
+}
+
+function renderLog() {
+  const list = document.getElementById('log-list');
+  if (!state.records.length) {
+    list.innerHTML = '<div style="text-align:center; padding: 40px 20px; color: var(--ink-3);">기록이 없어. 첫 매매를 기다리는 중.</div>';
+    return;
+  }
+  list.innerHTML = state.records.slice(0, 50).map(r => {
+    let badge = '', title = '', desc = '';
+    switch (r.type) {
+      case 'entry':
+        badge = '<span class="log-badge entry">진입</span>';
+        title = `${r.direction === 'long' ? '롱' : '숏'} @ ${r.entryPrice}`;
+        desc = `TP ${r.tp} · SL ${r.sl} · 예상손실 $${r.expectedLoss}`;
+        break;
+      case 'entry_attempt':
+        badge = '<span class="log-badge wait">시도</span>';
+        title = `${r.direction === 'long' ? '롱' : '숏'} 진입 시도`;
+        desc = `예상손실 $${r.expectedLoss}`;
+        break;
+      case 'entry_forgotten':
+        badge = '<span class="log-badge wait">폐기</span>';
+        title = '기억 안 나서 폐기';
+        break;
+      case 'wait':
+        badge = '<span class="log-badge wait">참음</span>';
+        title = r.reason || '참음';
+        desc = '포모 방지 다짐 완료';
+        break;
+      case 'close_profit':
+        badge = '<span class="log-badge profit">익절</span>';
+        title = `+$${r.amount}`;
+        desc = r.reason;
+        break;
+      case 'close_loss':
+        badge = '<span class="log-badge loss">손절</span>';
+        title = `−$${r.amount}`;
+        desc = r.reason;
+        break;
+      case 'close_even':
+        badge = '<span class="log-badge wait">본절</span>';
+        title = '본절';
+        desc = r.reason;
+        break;
+      case 'tpsl_edit':
+        badge = '<span class="log-badge wait">수정</span>';
+        title = 'TP/SL 변경';
+        desc = r.reason;
+        break;
+      case 'checking':
+        badge = '<span class="log-badge wait">확인</span>';
+        title = 'Checking';
+        break;
+      default: title = r.type;
+    }
+    return `<div class="log-item">
+      <div class="log-item-time">${formatTime(r.ts)}</div>
+      <div class="log-item-title">${badge} ${title}</div>
+      ${desc ? `<div class="log-item-desc">${desc}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderSettings() {
+  document.getElementById('setting-seed').textContent = state.seed ? `$${state.seed.toLocaleString()}` : '미설정';
+  document.getElementById('setting-risk').textContent = `${state.riskPct}%`;
+}
+
+function editSeed() {
+  const v = prompt('전체 시드 금액 입력 (USD)', state.seed || '');
+  if (v === null) return;
+  const num = parseFloat(v);
+  if (isNaN(num) || num <= 0) { alert('올바른 숫자를 입력해.'); return; }
+  state.seed = num;
+  saveState();
+  renderSettings();
+}
+
+function editRiskPct() {
+  const v = prompt('일일 손실 한도 (%)', state.riskPct);
+  if (v === null) return;
+  const num = parseFloat(v);
+  if (isNaN(num) || num <= 0 || num > 100) { alert('1~100 사이 숫자.'); return; }
+  state.riskPct = num;
+  saveState();
+  renderSettings();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lastchance_${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importData() { document.getElementById('import-file-input').click(); }
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.records) throw new Error('잘못된 파일');
+      showModal({
+        title: '데이터 가져올래?',
+        text: '현재 모든 데이터가 덮어써져.',
+        buttons: [
+          { label: '취소', class: 'btn-secondary', onClick: hideModal },
+          { label: '가져오기', class: 'btn-primary', onClick: () => {
+            state = { ...defaultState(), ...data };
+            saveState();
+            hideModal();
+            renderSettings();
+            renderHome();
+            alert('완료.');
+          }}
+        ]
+      });
+    } catch (e) { alert('파일을 읽을 수 없어: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+function confirmReset() {
+  showModal({
+    title: '정말 초기화?',
+    text: '모든 기록이 삭제돼. 되돌릴 수 없어.',
+    buttons: [
+      { label: '취소', class: 'btn-secondary', onClick: hideModal },
+      { label: '초기화', class: 'btn-danger', onClick: () => {
+        state = defaultState();
+        saveState();
+        hideModal();
+        renderSettings();
+        goto('screen-home');
+      }}
+    ]
+  });
+}
+
+function showModal({ title, text, buttons }) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-text').innerHTML = text;
+  const btnArea = document.getElementById('modal-buttons');
+  btnArea.innerHTML = '';
+  buttons.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${b.class}`;
+    btn.textContent = b.label;
+    btn.onclick = b.onClick;
+    btnArea.appendChild(btn);
+  });
+  document.getElementById('modal').classList.add('active');
+}
+
+function hideModal() { document.getElementById('modal').classList.remove('active'); }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    state = loadState();
+    const curr = document.querySelector('.screen.active')?.id;
+    if (state.pendingEntry && curr === 'screen-home') askPendingReturn();
+    if (curr === 'screen-home') renderHome();
+  }
+});
+
+renderHome();
+if (state.pendingEntry) setTimeout(askPendingReturn, 300);
+</script>
+</body>
+</html>
