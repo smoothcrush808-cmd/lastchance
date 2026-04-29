@@ -265,7 +265,7 @@
 <div id="screen-home" class="screen active">
   <div class="header">
     <div class="header-placeholder"></div>
-    <div class="header-title">LAST CHANCE</div>
+    <div class="header-title" id="home-header-title">LAST CHANCE</div>
     <button class="header-back" onclick="goto('screen-settings')">⚙</button>
   </div>
   <div class="content">
@@ -690,7 +690,7 @@
       <span class="setting-item-value">→</span>
     </div>
     <div style="margin-top: 30px; text-align: center; color: var(--ink-3); font-size: 11px; letter-spacing: 0.05em;">
-      LAST CHANCE v0.1<br>built by Alex, Jin, Mia, Sara, Leo
+      <span id="version-display">LAST CHANCE</span><br>built by Alex, Jin, Mia, Sara, Leo
     </div>
     <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="handleImport(event)">
   </div>
@@ -707,6 +707,7 @@
 </div>
 
 <script>
+const APP_VERSION = 'v0.1.2';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -858,6 +859,7 @@ function goBack(fallback) {
 
 function renderHome() {
   const s = getDailyStat();
+  document.getElementById('home-header-title').textContent = `LAST CHANCE · ${APP_VERSION}`;
   document.getElementById('stat-entries').textContent = s.entries;
   document.getElementById('stat-waits').textContent = s.waits;
   document.getElementById('stat-loss').textContent = `${s.loss.toFixed(0)}$`;
@@ -1058,12 +1060,16 @@ function launchBitget() {
     direction: state.pendingEntry.direction,
     expectedLoss: state.pendingEntry.expectedLoss,
   });
+  // [v0.1.2] iOS PWA가 죽었다 살아나도 살아남는 영구 플래그
+  localStorage.setItem('lc_returnFlag', 'trading');
   window.location.href = 'bitget://';
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
 
 function launchBitgetFromChecking() {
   addRecord('checking', {});
+  // [v0.1.2] Checking 복귀 플래그
+  localStorage.setItem('lc_returnFlag', 'checking');
   window.location.href = 'bitget://';
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
@@ -1076,6 +1082,7 @@ function confirmCancel() {
       { label: '계속', class: 'btn-secondary', onClick: hideModal },
       { label: '취소하기', class: 'btn-danger', onClick: () => {
         state.pendingEntry = null;
+        localStorage.removeItem('lc_returnFlag');
         saveState();
         hideModal();
         goto('screen-home');
@@ -1113,6 +1120,7 @@ function forgotReturn() {
       { label: '취소', class: 'btn-secondary', onClick: hideModal },
       { label: '폐기', class: 'btn-danger', onClick: () => {
         state.pendingEntry = null;
+        localStorage.removeItem('lc_returnFlag');
         saveState();
         addRecord('entry_forgotten', {});
         hideModal();
@@ -1297,6 +1305,7 @@ function renderLog() {
 function renderSettings() {
   document.getElementById('setting-seed').textContent = state.seed ? `$${state.seed.toLocaleString()}` : '미설정';
   document.getElementById('setting-risk').textContent = `${state.riskPct}%`;
+  document.getElementById('version-display').textContent = `LAST CHANCE ${APP_VERSION}`;
 }
 
 function editSeed() {
@@ -1395,23 +1404,50 @@ function showModal({ title, text, buttons }) {
 
 function hideModal() { document.getElementById('modal').classList.remove('active'); }
 
-/* ==================== [v0.1.1] 복귀 감지 강화 ==================== */
-// pendingEntry가 있을 때 → "진입했어?" 화면으로 자동 이동
+/* ==================== [v0.1.2] 복귀 감지 - returnFlag 방식 ==================== */
+// 비트겟 다녀온 경우, localStorage의 returnFlag로 100% 감지 (iOS PWA 죽었다 살아도 살아남음)
+function checkReturnFlag() {
+  const flag = localStorage.getItem('lc_returnFlag');
+  if (!flag) return false;
+
+  // 플래그 즉시 제거 (중복 발동 방지)
+  localStorage.removeItem('lc_returnFlag');
+
+  // 최신 상태 로드
+  state = loadState();
+
+  if (flag === 'trading') {
+    // pendingEntry 있어야 정상. 없으면 그냥 홈
+    if (!state.pendingEntry) return false;
+    // 24시간 넘었으면 자동 폐기
+    const age = now() - state.pendingEntry.ts;
+    if (age > 24 * 3600000) {
+      state.pendingEntry = null;
+      saveState();
+      return false;
+    }
+    askPendingReturn();
+    return true;
+  }
+  // checking 복귀의 경우 - openPosition 있으면 변동확인 화면, 없으면 그냥 홈
+  if (flag === 'checking' && state.openPosition) {
+    goto('screen-return-checking');
+    return true;
+  }
+  return false;
+}
+
+// 보조 백업: pendingEntry가 있는데 화면이 홈이면 체크
 function checkPendingOnResume() {
-  // 최신 상태 다시 로드 (다른 곳에서 변경됐을 수 있음)
   state = loadState();
   if (!state.pendingEntry) return false;
-
-  // pendingEntry가 24시간 넘었으면 자동 폐기 (좀비 데이터 방지)
   const age = now() - state.pendingEntry.ts;
   if (age > 24 * 3600000) {
     state.pendingEntry = null;
     saveState();
     return false;
   }
-
   const curr = document.querySelector('.screen.active')?.id;
-  // 현재 홈 화면이거나 trading-principle 화면이면 → 진입 확인 화면으로 이동
   if (curr === 'screen-home' || curr === 'screen-trading-principle' || !curr) {
     askPendingReturn();
     return true;
@@ -1419,41 +1455,35 @@ function checkPendingOnResume() {
   return false;
 }
 
+// 통합 복귀 핸들러
+function handleResume() {
+  if (checkReturnFlag()) return;
+  if (checkPendingOnResume()) return;
+  const curr = document.querySelector('.screen.active')?.id;
+  if (curr === 'screen-home') renderHome();
+}
+
 // 1. visibilitychange (탭 전환, 앱 백그라운드↔포그라운드)
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    if (!checkPendingOnResume()) {
-      const curr = document.querySelector('.screen.active')?.id;
-      if (curr === 'screen-home') renderHome();
-    }
-  }
+  if (document.visibilityState === 'visible') handleResume();
 });
 
-// 2. pageshow (iOS Safari가 백그라운드에서 복귀할 때 가장 안정적)
-window.addEventListener('pageshow', (e) => {
-  if (!checkPendingOnResume()) {
-    const curr = document.querySelector('.screen.active')?.id;
-    if (curr === 'screen-home') renderHome();
-  }
-});
+// 2. pageshow (iOS Safari가 백그라운드에서 복귀할 때)
+window.addEventListener('pageshow', handleResume);
 
 // 3. focus (포그라운드 진입)
-window.addEventListener('focus', () => {
-  if (!checkPendingOnResume()) {
-    const curr = document.querySelector('.screen.active')?.id;
-    if (curr === 'screen-home') renderHome();
-  }
-});
+window.addEventListener('focus', handleResume);
 
 /* ==================== 초기 실행 ==================== */
 renderHome();
 
-// pendingEntry가 있으면 즉시 + 약간 지연 후 두 번 체크 (iOS 타이밍 이슈 대응)
-if (state.pendingEntry) {
-  // 즉시 시도
-  askPendingReturn();
-  // DOM 완전히 준비된 후 한 번 더
-  setTimeout(checkPendingOnResume, 100);
+// [v0.1.2] 앱 시작 시점에 returnFlag 우선 체크 (iOS PWA가 죽었다 살아난 케이스)
+if (!checkReturnFlag()) {
+  // returnFlag 없으면 pendingEntry라도 있는지 체크
+  if (state.pendingEntry) {
+    askPendingReturn();
+    setTimeout(checkPendingOnResume, 100);
+  }
 }
 </script>
 </body>
