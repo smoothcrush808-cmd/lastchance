@@ -100,13 +100,6 @@
     padding: 16px 20px; margin-bottom: 14px;
   }
   .status-banner.cooldown { background: var(--danger); }
-  .status-banner.pulsing {
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.85; transform: scale(0.99); }
-  }
   .status-banner-title {
     font-size: 11px; font-weight: 500;
     opacity: 0.7; letter-spacing: 0.05em;
@@ -269,15 +262,14 @@
     <button class="header-back" onclick="goto('screen-settings')">⚙</button>
   </div>
   <div class="content">
-    <h1 class="page-title">오늘, 뭐 하러 왔어?</h1>
-    <p class="page-subtitle">이번 매매가 마지막인 것처럼 신중하게.</p>
+    <p class="page-subtitle" style="margin-top: 12px;">이번 매매가 마지막인 것처럼 신중하게.</p>
     <div class="mini-stats">
       <div class="mini-stat"><div class="mini-stat-value" id="stat-entries">0</div><div class="mini-stat-label">오늘 진입</div></div>
       <div class="mini-stat"><div class="mini-stat-value" id="stat-waits">0</div><div class="mini-stat-label">참음</div></div>
       <div class="mini-stat"><div class="mini-stat-value" id="stat-loss">0$</div><div class="mini-stat-label">오늘 손실</div></div>
     </div>
     <div id="status-area"></div>
-    <div class="section-label">경로 선택</div>
+    <div class="section-label">매매 시작</div>
     <div class="purpose-card" id="card-trading" onclick="startTrading()">
       <div class="purpose-card-title"><span>TRADING</span><span class="arrow">→</span></div>
       <div class="purpose-card-desc">신규 진입. 시나리오와 손실액 필수.</div>
@@ -286,6 +278,17 @@
       <div class="purpose-card-title"><span>CHECKING</span><span class="arrow">→</span></div>
       <div class="purpose-card-desc">포지션 확인 · 차트 확인.</div>
     </div>
+
+    <div class="section-label" style="margin-top: 20px;">비트겟 다녀온 후</div>
+    <div class="purpose-card" id="card-after-trading" onclick="startAfterTrading()">
+      <div class="purpose-card-title"><span>AFTER TRADING</span><span class="arrow">→</span></div>
+      <div class="purpose-card-desc">진입했어? 참았어? 결과 입력.</div>
+    </div>
+    <div class="purpose-card" id="card-after-checking" onclick="startAfterChecking()">
+      <div class="purpose-card-title"><span>AFTER CHECKING</span><span class="arrow">→</span></div>
+      <div class="purpose-card-desc">포지션 변동 · 청산 결과 입력.</div>
+    </div>
+
     <div style="margin-top: 20px; text-align: center;">
       <button class="btn btn-secondary" onclick="goto('screen-log')" style="padding: 12px; font-size: 14px;">기록 보기</button>
     </div>
@@ -685,6 +688,17 @@
       <span class="setting-item-label">데이터 가져오기</span>
       <span class="setting-item-value">JSON ↑</span>
     </div>
+
+    <div class="section-label">옵시디언 연동</div>
+    <div class="setting-item" onclick="exportMarkdownFile()">
+      <span class="setting-item-label">마크다운 다운로드</span>
+      <span class="setting-item-value">.md ↓</span>
+    </div>
+    <div class="setting-item" onclick="exportMarkdownClipboard()">
+      <span class="setting-item-label">마크다운 복사</span>
+      <span class="setting-item-value">클립보드</span>
+    </div>
+
     <div class="setting-item" onclick="confirmReset()">
       <span class="setting-item-label" style="color: var(--danger);">모든 기록 초기화</span>
       <span class="setting-item-value">→</span>
@@ -711,7 +725,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.3';
+const APP_VERSION = 'v0.1.5';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -870,7 +884,12 @@ function renderHome() {
   const statusArea = document.getElementById('status-area');
   statusArea.innerHTML = '';
   const tradingCard = document.getElementById('card-trading');
+  const afterTradingCard = document.getElementById('card-after-trading');
+  const afterCheckingCard = document.getElementById('card-after-checking');
   tradingCard.classList.remove('disabled');
+  // [v0.1.4] AFTER 카드 활성/비활성 시각화
+  afterTradingCard.classList.toggle('disabled', !state.pendingEntry);
+  afterCheckingCard.classList.toggle('disabled', !state.openPosition);
 
   if (state.cooldownUntil && state.cooldownUntil > now()) {
     const rem = state.cooldownUntil - now();
@@ -885,7 +904,7 @@ function renderHome() {
     statusArea.innerHTML = `<div class="status-banner"><div class="status-banner-title">포지션 유지 중</div><div class="status-banner-value">${state.openPosition.direction === 'long' ? '롱' : '숏'} · 진입 ${state.openPosition.entryPrice || '-'}</div></div>`;
   } else if (state.pendingEntry) {
     const elapsedMin = Math.floor((now() - state.pendingEntry.ts) / 60000);
-    statusArea.innerHTML = `<div class="status-banner pulsing" onclick="askPendingReturn()" style="cursor:pointer; background: var(--danger);"><div class="status-banner-title">⚠️ 미확인 진입 시도</div><div class="status-banner-value">${elapsedMin}분 전 · 진입했어? 탭하기 →</div></div>`;
+    statusArea.innerHTML = `<div class="status-banner" style="background: var(--ink);"><div class="status-banner-title">진입 시도 진행 중</div><div class="status-banner-value">${elapsedMin}분 전 · AFTER TRADING 카드를 탭해</div></div>`;
   }
 }
 
@@ -1064,16 +1083,15 @@ function launchBitget() {
     direction: state.pendingEntry.direction,
     expectedLoss: state.pendingEntry.expectedLoss,
   });
-  // [v0.1.2] iOS PWA가 죽었다 살아나도 살아남는 영구 플래그
-  localStorage.setItem('lc_returnFlag', 'trading');
+  // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER TRADING 직접 탭
+  // pendingEntry는 그대로 유지 (state에 저장됨)
   window.location.href = 'bitget://';
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
 
 function launchBitgetFromChecking() {
   addRecord('checking', {});
-  // [v0.1.2] Checking 복귀 플래그
-  localStorage.setItem('lc_returnFlag', 'checking');
+  // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER CHECKING 직접 탭
   window.location.href = 'bitget://';
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
@@ -1086,7 +1104,6 @@ function confirmCancel() {
       { label: '계속', class: 'btn-secondary', onClick: hideModal },
       { label: '취소하기', class: 'btn-danger', onClick: () => {
         state.pendingEntry = null;
-        localStorage.removeItem('lc_returnFlag');
         saveState();
         hideModal();
         goto('screen-home');
@@ -1101,6 +1118,37 @@ function startChecking() {
     : randomPrinciple(['meta', 'philosophy']);
   document.getElementById('checking-principle-text').textContent = p;
   goto('screen-checking');
+}
+
+// [v0.1.4] 사용자가 비트겟 다녀온 후 직접 탭하는 진입점
+function startAfterTrading() {
+  // pendingEntry 없으면 안내
+  if (!state.pendingEntry) {
+    showModal({
+      title: '진입 시도 기록 없음',
+      text: '진행 중인 진입 시도가 없어. TRADING부터 시작해야 AFTER TRADING을 쓸 수 있어.',
+      buttons: [
+        { label: '확인', class: 'btn-primary', onClick: hideModal }
+      ]
+    });
+    return;
+  }
+  askPendingReturn();
+}
+
+function startAfterChecking() {
+  // openPosition 없으면 안내
+  if (!state.openPosition) {
+    showModal({
+      title: '진행 중인 포지션 없음',
+      text: '오픈 포지션이 없어. 포지션 잡고 TP/SL 입력 후에 AFTER CHECKING을 쓸 수 있어.',
+      buttons: [
+        { label: '확인', class: 'btn-primary', onClick: hideModal }
+      ]
+    });
+    return;
+  }
+  goto('screen-return-checking');
 }
 
 function askPendingReturn() {
@@ -1124,7 +1172,6 @@ function forgotReturn() {
       { label: '취소', class: 'btn-secondary', onClick: hideModal },
       { label: '폐기', class: 'btn-danger', onClick: () => {
         state.pendingEntry = null;
-        localStorage.removeItem('lc_returnFlag');
         saveState();
         addRecord('entry_forgotten', {});
         hideModal();
@@ -1314,7 +1361,6 @@ function renderSettings() {
   // 디버그 정보 출력
   const debugEl = document.getElementById('debug-info');
   if (debugEl) {
-    const flag = localStorage.getItem('lc_returnFlag');
     const hasMain = !!localStorage.getItem(STORE_KEY);
     const pe = state.pendingEntry;
     const op = state.openPosition;
@@ -1325,16 +1371,15 @@ function renderSettings() {
     let out = '';
     out += `[VERSION] ${APP_VERSION}\n`;
     out += `[NOW]     ${new Date().toLocaleString('ko-KR')}\n`;
-    out += `\n--- LOCAL STORAGE ---\n`;
-    out += `lc_returnFlag: ${flag || '(없음)'}\n`;
-    out += `메인 데이터:    ${hasMain ? '있음 ✓' : '없음 ✗'}\n`;
+    out += `\n--- 저장소 ---\n`;
+    out += `메인 데이터: ${hasMain ? '있음 ✓' : '없음 ✗'}\n`;
     out += `\n--- 진행 중 상태 ---\n`;
     out += `pendingEntry: ${pe ? `있음 (${Math.floor((now()-pe.ts)/60000)}분 전, ${pe.direction})` : '없음'}\n`;
     out += `openPosition: ${op ? `있음 (${op.direction} @ ${op.entryPrice})` : '없음'}\n`;
     out += `cooldownUntil: ${cd ? `${Math.max(0, Math.floor((cd-now())/60000))}분 남음` : '없음'}\n`;
     out += `\n--- 환경 ---\n`;
     out += `visibilityState: ${visMode}\n`;
-    out += `display-mode standalone: ${window.matchMedia('(display-mode: standalone)').matches ? 'YES (홈화면 PWA)' : 'NO (Safari)'}\n`;
+    out += `display-mode: ${window.matchMedia('(display-mode: standalone)').matches ? 'PWA ✓' : 'Safari'}\n`;
     out += `URL: ${url.length > 60 ? url.slice(0, 60) + '...' : url}\n`;
     out += `\n--- 기록 ---\n`;
     out += `총 기록 수: ${state.records.length}건\n`;
@@ -1376,6 +1421,150 @@ function exportData() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// ===== 옵시디언용 마크다운 Export =====
+function buildMarkdown() {
+  const TYPE_LABEL = {
+    entry_attempt: '진입 시도',
+    entry: '진입 확정',
+    entry_forgotten: '진입 미확인',
+    wait: '참음',
+    checking: '체킹 진입',
+    tpsl_edit: 'TP/SL 수정',
+    close_profit: '익절',
+    close_loss: '손절',
+    close_even: '본전',
+  };
+  const dirLabel = d => d === 'long' ? '롱 ↑' : d === 'short' ? '숏 ↓' : '-';
+  const fmt = ts => new Date(ts).toLocaleString('ko-KR', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const dateKey = ts => new Date(ts).toISOString().slice(0, 10);
+
+  let md = `# LAST CHANCE — Trading Log\n\n`;
+  md += `> 내보낸 시각: ${fmt(now())}\n`;
+  md += `> 시드: ${state.seed ? '$' + state.seed : '미설정'} · 일일 손실 한도: ${state.riskPct}%\n\n`;
+
+  // 일일 통계 요약
+  const dailyKeys = Object.keys(state.dailyStats || {}).sort().reverse();
+  if (dailyKeys.length > 0) {
+    md += `## 일일 요약\n\n`;
+    md += `| 날짜 | 진입 | 참음 | 손실 |\n`;
+    md += `|---|---|---|---|\n`;
+    dailyKeys.forEach(k => {
+      const s = state.dailyStats[k];
+      md += `| ${k} | ${s.entries || 0} | ${s.waits || 0} | $${s.loss || 0} |\n`;
+    });
+    md += `\n`;
+  }
+
+  // 매매 기록 (날짜별 그룹)
+  md += `## 매매 기록\n\n`;
+  if (!state.records || state.records.length === 0) {
+    md += `_기록 없음_\n`;
+    return md;
+  }
+
+  const byDate = {};
+  state.records.forEach(r => {
+    const d = dateKey(r.ts);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
+  });
+
+  Object.keys(byDate).sort().reverse().forEach(date => {
+    md += `### ${date}\n\n`;
+    // 같은 날 안에서는 시간 오름차순(아침→밤)으로
+    const items = byDate[date].slice().sort((a, b) => a.ts - b.ts);
+    items.forEach(r => {
+      const time = new Date(r.ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      const label = TYPE_LABEL[r.type] || r.type;
+      md += `#### ${time} — ${label}\n`;
+
+      switch (r.type) {
+        case 'entry_attempt':
+          md += `- 방향: ${dirLabel(r.direction)}\n`;
+          md += `- 예상 손실: $${r.expectedLoss ?? '-'}\n`;
+          break;
+        case 'entry':
+          md += `- 방향: ${dirLabel(r.direction)}\n`;
+          md += `- 진입가: ${r.entryPrice ?? '-'}\n`;
+          md += `- TP / SL: ${r.tp ?? '-'} / ${r.sl ?? '-'}\n`;
+          md += `- 예상 손실: $${r.expectedLoss ?? '-'}\n`;
+          break;
+        case 'wait':
+          md += `- 방향: ${dirLabel(r.direction)}\n`;
+          md += `- 참은 이유: ${r.reason || '_미기재_'}\n`;
+          break;
+        case 'tpsl_edit':
+          if (r.prev) md += `- 이전: TP ${r.prev.tp ?? '-'} / SL ${r.prev.sl ?? '-'}\n`;
+          if (r.new) md += `- 변경: TP ${r.new.tp ?? '-'} / SL ${r.new.sl ?? '-'}\n`;
+          if (r.reason) md += `- 사유: ${r.reason}\n`;
+          break;
+        case 'close_profit':
+        case 'close_loss':
+          md += `- 방향: ${dirLabel(r.direction)}\n`;
+          md += `- 금액: $${r.amount ?? '-'}\n`;
+          if (r.reason) md += `- 사유: ${r.reason}\n`;
+          if (r.position) {
+            md += `- 포지션: 진입 ${r.position.entryPrice ?? '-'} / TP ${r.position.tp ?? '-'} / SL ${r.position.sl ?? '-'}\n`;
+          }
+          break;
+        case 'close_even':
+          md += `- 방향: ${dirLabel(r.direction)}\n`;
+          if (r.reason) md += `- 사유: ${r.reason}\n`;
+          break;
+        case 'checking':
+        case 'entry_forgotten':
+          md += `- (이벤트 기록)\n`;
+          break;
+        default:
+          md += `- ${JSON.stringify(r)}\n`;
+      }
+      md += `\n`;
+    });
+  });
+
+  md += `\n---\n_총 기록 수: ${state.records.length}_\n`;
+  return md;
+}
+
+function exportMarkdownFile() {
+  const md = buildMarkdown();
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lastchance_${todayKey()}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportMarkdownClipboard() {
+  const md = buildMarkdown();
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(md);
+      alert('마크다운이 클립보드에 복사됐어. 옵시디언에 붙여넣어.');
+    } else {
+      // Fallback: 임시 textarea로 복사
+      const ta = document.createElement('textarea');
+      ta.value = md;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      alert('마크다운이 클립보드에 복사됐어. 옵시디언에 붙여넣어.');
+    }
+  } catch (e) {
+    alert('복사 실패: ' + e.message);
+  }
 }
 
 function importData() { document.getElementById('import-file-input').click(); }
@@ -1442,87 +1631,24 @@ function showModal({ title, text, buttons }) {
 
 function hideModal() { document.getElementById('modal').classList.remove('active'); }
 
-/* ==================== [v0.1.2] 복귀 감지 - returnFlag 방식 ==================== */
-// 비트겟 다녀온 경우, localStorage의 returnFlag로 100% 감지 (iOS PWA 죽었다 살아도 살아남음)
-function checkReturnFlag() {
-  const flag = localStorage.getItem('lc_returnFlag');
-  if (!flag) return false;
-
-  // 플래그 즉시 제거 (중복 발동 방지)
-  localStorage.removeItem('lc_returnFlag');
-
-  // 최신 상태 로드
-  state = loadState();
-
-  if (flag === 'trading') {
-    // pendingEntry 있어야 정상. 없으면 그냥 홈
-    if (!state.pendingEntry) return false;
-    // 24시간 넘었으면 자동 폐기
-    const age = now() - state.pendingEntry.ts;
-    if (age > 24 * 3600000) {
-      state.pendingEntry = null;
-      saveState();
-      return false;
-    }
-    askPendingReturn();
-    return true;
-  }
-  // checking 복귀의 경우 - openPosition 있으면 변동확인 화면, 없으면 그냥 홈
-  if (flag === 'checking' && state.openPosition) {
-    goto('screen-return-checking');
-    return true;
-  }
-  return false;
-}
-
-// 보조 백업: pendingEntry가 있는데 화면이 홈이면 체크
-function checkPendingOnResume() {
-  state = loadState();
-  if (!state.pendingEntry) return false;
-  const age = now() - state.pendingEntry.ts;
-  if (age > 24 * 3600000) {
-    state.pendingEntry = null;
-    saveState();
-    return false;
-  }
-  const curr = document.querySelector('.screen.active')?.id;
-  if (curr === 'screen-home' || curr === 'screen-trading-principle' || !curr) {
-    askPendingReturn();
-    return true;
-  }
-  return false;
-}
-
-// 통합 복귀 핸들러
-function handleResume() {
-  if (checkReturnFlag()) return;
-  if (checkPendingOnResume()) return;
-  const curr = document.querySelector('.screen.active')?.id;
-  if (curr === 'screen-home') renderHome();
-}
-
-// 1. visibilitychange (탭 전환, 앱 백그라운드↔포그라운드)
+/* ==================== [v0.1.4] 자동감지 폐기 - 사용자 직접 탭 방식 ==================== */
+// 화면 복귀 시 단순히 홈만 새로고침
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') handleResume();
+  if (document.visibilityState === 'visible') {
+    state = loadState(); // 다른 탭/세션에서 변경됐을 수 있음
+    const curr = document.querySelector('.screen.active')?.id;
+    if (curr === 'screen-home') renderHome();
+  }
 });
 
-// 2. pageshow (iOS Safari가 백그라운드에서 복귀할 때)
-window.addEventListener('pageshow', handleResume);
-
-// 3. focus (포그라운드 진입)
-window.addEventListener('focus', handleResume);
+window.addEventListener('pageshow', () => {
+  state = loadState();
+  const curr = document.querySelector('.screen.active')?.id;
+  if (curr === 'screen-home') renderHome();
+});
 
 /* ==================== 초기 실행 ==================== */
 renderHome();
-
-// [v0.1.2] 앱 시작 시점에 returnFlag 우선 체크 (iOS PWA가 죽었다 살아난 케이스)
-if (!checkReturnFlag()) {
-  // returnFlag 없으면 pendingEntry라도 있는지 체크
-  if (state.pendingEntry) {
-    askPendingReturn();
-    setTimeout(checkPendingOnResume, 100);
-  }
-}
 </script>
 </body>
 </html>
