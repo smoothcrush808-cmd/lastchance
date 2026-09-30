@@ -689,6 +689,12 @@
       <span class="setting-item-value">JSON ↑</span>
     </div>
 
+    <div class="section-label">아이폰 단축어 연동</div>
+    <div class="setting-item" onclick="toggleShortcutPass()">
+      <span class="setting-item-label">비트겟을 'LC통과' 단축어로 열기</span>
+      <span class="setting-item-value" id="setting-shortcut">OFF</span>
+    </div>
+
     <div class="section-label">옵시디언 연동</div>
     <div class="setting-item" onclick="exportMarkdownFile()">
       <span class="setting-item-label">마크다운 다운로드</span>
@@ -725,7 +731,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.5';
+const APP_VERSION = 'v0.1.6';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -807,24 +813,56 @@ function defaultState() {
     seed: null, riskPct: 5,
     scenario: { images: [null, null], uploadedAt: null, expiresAt: null },
     pendingEntry: null, openPosition: null, cooldownUntil: null,
+    useShortcutPass: false,
     records: [], dailyStats: {},
   };
+}
+
+// [v0.1.6] 진입/포지션/기록에 복사되던 시나리오 이미지(base64) 제거 → 용량 폭증 방지
+function stripScenarioCopies(s) {
+  if (s.pendingEntry) delete s.pendingEntry.scenario;
+  if (s.openPosition) delete s.openPosition.scenario;
+  (s.records || []).forEach(r => { if (r.position) delete r.position.scenario; });
+  return s;
 }
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return defaultState();
-    return { ...defaultState(), ...JSON.parse(raw) };
+    return stripScenarioCopies({ ...defaultState(), ...JSON.parse(raw) });
   } catch (e) { return defaultState(); }
 }
 
-function saveState() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+// [v0.1.6] 저장 실패(용량 초과) 시 조용히 날아가지 않도록 처리
+function saveState() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    return true;
+  } catch (e) {
+    // 1차 대응: 가장 무거운 시나리오 캡처를 비우고 재시도
+    if (state.scenario && state.scenario.images.some(Boolean)) {
+      state.scenario = { images: [null, null], uploadedAt: null, expiresAt: null };
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        alert('⚠️ 저장 공간 부족으로 시나리오 캡처를 비웠어. 기록은 저장됐어. 다음 매매 때 캡처를 다시 첨부해.');
+        return true;
+      } catch (e2) {}
+    }
+    alert('⚠️ 저장 실패: 저장 공간이 부족해. 설정 → 내보내기로 백업한 뒤 초기화해줘.\n(' + e.name + ')');
+    return false;
+  }
+}
 
 let state = loadState();
 
 function now() { return Date.now(); }
-function todayKey() { return new Date().toISOString().slice(0, 10); }
+// [v0.1.6] UTC가 아닌 기기 로컬(KST) 날짜 기준 → 자정에 일일 한도 리셋
+function localDateKey(ts = now()) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function todayKey() { return localDateKey(); }
 function formatTime(ts) {
   return new Date(ts).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
@@ -1071,11 +1109,23 @@ function proceedToPrinciple() {
   if (!val || !tempDirection) return;
   state.pendingEntry = {
     ts: now(), direction: tempDirection,
-    expectedLoss: val, scenario: state.scenario.images.slice(),
+    expectedLoss: val,
   };
   saveState();
   document.getElementById('trading-principle-text').textContent = randomPrinciple(['risk', 'entry']);
   goto('screen-trading-principle');
+}
+
+// [v0.1.6] 단축어 연동 ON이면 'LC통과' 단축어 경유 → 비트겟 자동화의 무한 루프 방지
+const SHORTCUT_PASS_URL = 'shortcuts://run-shortcut?name=' + encodeURIComponent('LC통과');
+function openBitget() {
+  window.location.href = state.useShortcutPass ? SHORTCUT_PASS_URL : 'bitget://';
+}
+
+function toggleShortcutPass() {
+  state.useShortcutPass = !state.useShortcutPass;
+  saveState();
+  renderSettings();
 }
 
 function launchBitget() {
@@ -1085,14 +1135,14 @@ function launchBitget() {
   });
   // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER TRADING 직접 탭
   // pendingEntry는 그대로 유지 (state에 저장됨)
-  window.location.href = 'bitget://';
+  openBitget();
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
 
 function launchBitgetFromChecking() {
   addRecord('checking', {});
   // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER CHECKING 직접 탭
-  window.location.href = 'bitget://';
+  openBitget();
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
 
@@ -1356,6 +1406,7 @@ function renderLog() {
 function renderSettings() {
   document.getElementById('setting-seed').textContent = state.seed ? `$${state.seed.toLocaleString()}` : '미설정';
   document.getElementById('setting-risk').textContent = `${state.riskPct}%`;
+  document.getElementById('setting-shortcut').textContent = state.useShortcutPass ? 'ON' : 'OFF';
   document.getElementById('version-display').textContent = `LAST CHANCE ${APP_VERSION}`;
 
   // 디버그 정보 출력
@@ -1441,7 +1492,7 @@ function buildMarkdown() {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit'
   });
-  const dateKey = ts => new Date(ts).toISOString().slice(0, 10);
+  const dateKey = ts => localDateKey(ts);
 
   let md = `# LAST CHANCE — Trading Log\n\n`;
   md += `> 내보낸 시각: ${fmt(now())}\n`;
@@ -1583,7 +1634,7 @@ function handleImport(event) {
         buttons: [
           { label: '취소', class: 'btn-secondary', onClick: hideModal },
           { label: '가져오기', class: 'btn-primary', onClick: () => {
-            state = { ...defaultState(), ...data };
+            state = stripScenarioCopies({ ...defaultState(), ...data });
             saveState();
             hideModal();
             renderSettings();
