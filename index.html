@@ -689,6 +689,12 @@
       <span class="setting-item-value">JSON ↑</span>
     </div>
 
+    <div class="section-label">아이폰 단축어 연동</div>
+    <div class="setting-item" onclick="toggleShortcutPass()">
+      <span class="setting-item-label">비트겟을 'LC통과' 단축어로 열기</span>
+      <span class="setting-item-value" id="setting-shortcut">OFF</span>
+    </div>
+
     <div class="section-label">옵시디언 연동</div>
     <div class="setting-item" onclick="exportMarkdownFile()">
       <span class="setting-item-label">마크다운 다운로드</span>
@@ -807,6 +813,7 @@ function defaultState() {
     seed: null, riskPct: 5,
     scenario: { images: [null, null], uploadedAt: null, expiresAt: null },
     pendingEntry: null, openPosition: null, cooldownUntil: null,
+    useShortcutPass: false,
     records: [], dailyStats: {},
   };
 }
@@ -1109,6 +1116,18 @@ function proceedToPrinciple() {
   goto('screen-trading-principle');
 }
 
+// [v0.1.6] 단축어 연동 ON이면 'LC통과' 단축어 경유 → 비트겟 자동화의 무한 루프 방지
+const SHORTCUT_PASS_URL = 'shortcuts://run-shortcut?name=' + encodeURIComponent('LC통과');
+function openBitget() {
+  window.location.href = state.useShortcutPass ? SHORTCUT_PASS_URL : 'bitget://';
+}
+
+function toggleShortcutPass() {
+  state.useShortcutPass = !state.useShortcutPass;
+  saveState();
+  renderSettings();
+}
+
 function launchBitget() {
   addRecord('entry_attempt', {
     direction: state.pendingEntry.direction,
@@ -1116,14 +1135,14 @@ function launchBitget() {
   });
   // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER TRADING 직접 탭
   // pendingEntry는 그대로 유지 (state에 저장됨)
-  window.location.href = 'bitget://';
+  openBitget();
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
 
 function launchBitgetFromChecking() {
   addRecord('checking', {});
   // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER CHECKING 직접 탭
-  window.location.href = 'bitget://';
+  openBitget();
   setTimeout(() => { goto('screen-home'); }, 1500);
 }
 
@@ -1387,6 +1406,7 @@ function renderLog() {
 function renderSettings() {
   document.getElementById('setting-seed').textContent = state.seed ? `$${state.seed.toLocaleString()}` : '미설정';
   document.getElementById('setting-risk').textContent = `${state.riskPct}%`;
+  document.getElementById('setting-shortcut').textContent = state.useShortcutPass ? 'ON' : 'OFF';
   document.getElementById('version-display').textContent = `LAST CHANCE ${APP_VERSION}`;
 
   // 디버그 정보 출력
