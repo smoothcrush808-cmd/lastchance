@@ -349,6 +349,10 @@
         <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="dir-short" onclick="selectDirection('short')">숏 ↓</button>
       </div>
     </div>
+    <div class="input-group">
+      <label class="input-label">진입 근거 한 줄 (선택)</label>
+      <textarea class="textarea" id="input-entry-thesis" rows="2" placeholder="예: 4H 매물대 하단 지지 + 거래량 급증 확인"></textarea>
+    </div>
     <div class="btn-group">
       <button class="btn btn-primary" id="risk-next-btn" onclick="proceedToPrinciple()" disabled>다음</button>
     </div>
@@ -731,7 +735,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.6';
+const APP_VERSION = 'v0.1.7';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -880,7 +884,7 @@ function getDailyStat() {
 function addRecord(type, data = {}) {
   const rec = { id: 'r_' + now() + '_' + Math.random().toString(36).slice(2, 7), type, ts: now(), ...data };
   state.records.unshift(rec);
-  if (state.records.length > 200) state.records = state.records.slice(0, 200);
+  // [v0.1.7] 200건 제한 제거 — 일지 기록은 지우지 않음 (이미지 미포함이라 건당 수백 바이트)
   saveState();
   return rec;
 }
@@ -1052,6 +1056,7 @@ let tempDirection = null;
 function renderRiskScreen() {
   tempDirection = null;
   document.getElementById('input-loss-amount').value = '';
+  document.getElementById('input-entry-thesis').value = '';
   document.getElementById('risk-hint').textContent = '입력하면 한도 체크가 돼.';
   document.getElementById('risk-hint').className = 'input-hint';
   document.getElementById('risk-next-btn').disabled = true;
@@ -1110,6 +1115,7 @@ function proceedToPrinciple() {
   state.pendingEntry = {
     ts: now(), direction: tempDirection,
     expectedLoss: val,
+    thesis: document.getElementById('input-entry-thesis').value.trim(),
   };
   saveState();
   document.getElementById('trading-principle-text').textContent = randomPrinciple(['risk', 'entry']);
@@ -1132,6 +1138,7 @@ function launchBitget() {
   addRecord('entry_attempt', {
     direction: state.pendingEntry.direction,
     expectedLoss: state.pendingEntry.expectedLoss,
+    thesis: state.pendingEntry.thesis || '',
   });
   // [v0.1.4] 자동 감지 폐기 - 사용자가 AFTER TRADING 직접 탭
   // pendingEntry는 그대로 유지 (state에 저장됨)
@@ -1254,6 +1261,7 @@ function saveTPSL() {
     direction: state.openPosition.direction,
     entryPrice: entry, tp, sl,
     expectedLoss: state.openPosition.expectedLoss,
+    thesis: state.openPosition.thesis || '',
   });
   document.getElementById('fb-dir').textContent = state.openPosition.direction === 'long' ? '롱 ↑' : '숏 ↓';
   document.getElementById('fb-entry').textContent = entry;
@@ -1268,7 +1276,7 @@ function finishEntry() { goto('screen-home'); }
 function confirmWaited() { goto('screen-wait-reason'); }
 
 function saveWait(reason) {
-  addRecord('wait', { reason, direction: state.pendingEntry?.direction });
+  addRecord('wait', { reason, direction: state.pendingEntry?.direction, thesis: state.pendingEntry?.thesis || '' });
   getDailyStat().waits += 1;
   state.pendingEntry = null;
   saveState();
@@ -1341,6 +1349,10 @@ function updateCooldownDisplay() {
   el.textContent = formatMinSec(rem);
 }
 
+function esc(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function renderLog() {
   const list = document.getElementById('log-list');
   if (!state.records.length) {
@@ -1353,12 +1365,12 @@ function renderLog() {
       case 'entry':
         badge = '<span class="log-badge entry">진입</span>';
         title = `${r.direction === 'long' ? '롱' : '숏'} @ ${r.entryPrice}`;
-        desc = `TP ${r.tp} · SL ${r.sl} · 예상손실 $${r.expectedLoss}`;
+        desc = `TP ${r.tp} · SL ${r.sl} · 예상손실 $${r.expectedLoss}` + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '');
         break;
       case 'entry_attempt':
         badge = '<span class="log-badge wait">시도</span>';
         title = `${r.direction === 'long' ? '롱' : '숏'} 진입 시도`;
-        desc = `예상손실 $${r.expectedLoss}`;
+        desc = `예상손실 $${r.expectedLoss}` + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '');
         break;
       case 'entry_forgotten':
         badge = '<span class="log-badge wait">폐기</span>';
@@ -1538,15 +1550,18 @@ function buildMarkdown() {
         case 'entry_attempt':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
           md += `- 예상 손실: $${r.expectedLoss ?? '-'}\n`;
+          md += `- 근거: ${r.thesis || '_미기재_'}\n`;
           break;
         case 'entry':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
           md += `- 진입가: ${r.entryPrice ?? '-'}\n`;
           md += `- TP / SL: ${r.tp ?? '-'} / ${r.sl ?? '-'}\n`;
           md += `- 예상 손실: $${r.expectedLoss ?? '-'}\n`;
+          md += `- 근거: ${r.thesis || '_미기재_'}\n`;
           break;
         case 'wait':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
+          if (r.thesis) md += `- 원래 근거: ${r.thesis}\n`;
           md += `- 참은 이유: ${r.reason || '_미기재_'}\n`;
           break;
         case 'tpsl_edit':
@@ -1561,11 +1576,13 @@ function buildMarkdown() {
           if (r.reason) md += `- 사유: ${r.reason}\n`;
           if (r.position) {
             md += `- 포지션: 진입 ${r.position.entryPrice ?? '-'} / TP ${r.position.tp ?? '-'} / SL ${r.position.sl ?? '-'}\n`;
+            if (r.position.thesis) md += `- 진입 근거: ${r.position.thesis}\n`;
           }
           break;
         case 'close_even':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
           if (r.reason) md += `- 사유: ${r.reason}\n`;
+          if (r.position?.thesis) md += `- 진입 근거: ${r.position.thesis}\n`;
           break;
         case 'checking':
         case 'entry_forgotten':
