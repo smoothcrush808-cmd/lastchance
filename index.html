@@ -303,7 +303,7 @@
   </div>
   <div class="content">
     <h1 class="page-title">시나리오 첨부</h1>
-    <p class="page-subtitle">TradingView 작도 + Jarvis 검증. 없으면 진입 불가.</p>
+    <p class="page-subtitle">TradingView 작도 + Charlie 검증. 없으면 진입 불가.</p>
     <div id="scenario-existing-area"></div>
     <div id="scenario-upload-area">
       <label class="upload-slot" id="upload-slot-1">
@@ -316,7 +316,7 @@
       <label class="upload-slot" id="upload-slot-2">
         <input type="file" accept="image/*" onchange="handleUpload(event, 2)">
         <div id="slot-2-content">
-          <div class="upload-slot-label">2 · Jarvis 검증</div>
+          <div class="upload-slot-label">2 · Charlie 검증</div>
           <div class="upload-slot-desc">Claude 채팅 캡처를 탭해서 선택</div>
         </div>
       </label>
@@ -735,7 +735,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.7';
+const APP_VERSION = 'v0.1.8';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -1034,7 +1034,7 @@ function refreshUploadSlots() {
       content.innerHTML = `<img src="${tempUploads[n - 1]}">`;
     } else {
       slot.classList.remove('filled');
-      const label = n === 1 ? 'TradingView 작도' : 'Jarvis 검증';
+      const label = n === 1 ? 'TradingView 작도' : 'Charlie 검증';
       content.innerHTML = `<div class="upload-slot-label">${n} · ${label}</div><div class="upload-slot-desc">차트 캡처를 탭해서 선택</div>`;
     }
   });
