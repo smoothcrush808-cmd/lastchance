@@ -735,7 +735,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.8';
+const APP_VERSION = 'v0.1.9';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -827,6 +827,21 @@ function stripScenarioCopies(s) {
   if (s.pendingEntry) delete s.pendingEntry.scenario;
   if (s.openPosition) delete s.openPosition.scenario;
   (s.records || []).forEach(r => { if (r.position) delete r.position.scenario; });
+  return fixNegativeAmounts(s);
+}
+
+// [v0.1.9] 청산 금액에 마이너스를 넣어 저장된 기록 보정
+// 손절 -42 입력 시 일일 손실이 42 줄어든 상태 → 2×42를 더해 원래 손실(+42)로 되돌림
+function fixNegativeAmounts(s) {
+  (s.records || []).forEach(r => {
+    if ((r.type === 'close_loss' || r.type === 'close_profit') && r.amount < 0) {
+      if (r.type === 'close_loss') {
+        const st = s.dailyStats && s.dailyStats[localDateKey(r.ts)];
+        if (st) st.loss += -2 * r.amount;
+      }
+      r.amount = -r.amount;
+    }
+  });
   return s;
 }
 
@@ -859,6 +874,7 @@ function saveState() {
 }
 
 let state = loadState();
+if (localStorage.getItem(STORE_KEY)) saveState(); // [v0.1.9] 보정된 데이터 즉시 저장
 
 function now() { return Date.now(); }
 // [v0.1.6] UTC가 아닌 기기 로컬(KST) 날짜 기준 → 자정에 일일 한도 리셋
@@ -1304,10 +1320,10 @@ function saveEditTPSL() {
 function saveClose(type) {
   let amount = 0, reason = '';
   if (type === 'profit') {
-    amount = parseFloat(document.getElementById('profit-amount').value) || 0;
+    amount = Math.abs(parseFloat(document.getElementById('profit-amount').value) || 0);
     reason = document.getElementById('profit-reason').value.trim();
   } else if (type === 'loss') {
-    amount = parseFloat(document.getElementById('loss-amount').value) || 0;
+    amount = Math.abs(parseFloat(document.getElementById('loss-amount').value) || 0); // [v0.1.9] 부호 무관하게 손실로 처리
     reason = document.getElementById('loss-reason').value.trim();
   } else {
     reason = document.getElementById('even-reason').value.trim();
