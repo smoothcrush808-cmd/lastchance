@@ -347,7 +347,9 @@
       <div style="display: flex; gap: 10px;">
         <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="dir-long" onclick="selectDirection('long')">롱 ↑</button>
         <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="dir-short" onclick="selectDirection('short')">숏 ↓</button>
+        <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="dir-both" onclick="selectDirection('both')">양방향 ⇅</button>
       </div>
+      <div class="input-hint">롱·숏 시나리오를 둘 다 짜고 조건을 기다리면 양방향.</div>
     </div>
     <div class="input-group">
       <label class="input-label">진입 근거 한 줄 (선택)</label>
@@ -421,6 +423,25 @@
   <div class="content">
     <h1 class="page-title">목표 · 스탑 입력</h1>
     <p class="page-subtitle">입력해야 포지션 상태로 전환돼.</p>
+    <div class="input-group">
+      <label class="input-label">실제 진입 방향 <span id="planned-dir-label" style="color: var(--ink-3); font-weight: 400;"></span></label>
+      <div style="display: flex; gap: 10px;">
+        <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="act-long" onclick="selectActualDirection('long')">롱 ↑</button>
+        <button class="choice-btn" style="justify-content: center; margin-bottom:0;" id="act-short" onclick="selectActualDirection('short')">숏 ↓</button>
+      </div>
+    </div>
+    <div id="flip-area" hidden>
+      <div class="alert warn">🔄 계획과 반대로 들어갔어. 이유와 실제 손실액을 남겨.</div>
+      <div class="input-group">
+        <label class="input-label">왜 뒤집었어? (필수)</label>
+        <textarea class="textarea" id="input-flip-reason" rows="2" placeholder="예: 롱 지지 구간 이탈 + 매도 거래량 급증"></textarea>
+      </div>
+      <div class="input-group">
+        <label class="input-label">스탑까지 실제 예상 손실 ($)</label>
+        <input type="number" class="input" id="input-flip-loss" oninput="checkFlipLoss()">
+        <div class="input-hint" id="flip-loss-hint"></div>
+      </div>
+    </div>
     <div class="input-group">
       <label class="input-label">진입가</label>
       <input type="text" class="input" id="input-entry-price" placeholder="예: 62150">
@@ -735,7 +756,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.10';
+const APP_VERSION = 'v0.1.11';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -959,7 +980,7 @@ function renderHome() {
     statusArea.innerHTML = `<div class="status-banner cooldown"><div class="status-banner-title">일일 한도 도달</div><div class="status-banner-value">오늘은 여기까지. 내일 다시.</div></div>`;
     tradingCard.classList.add('disabled');
   } else if (state.openPosition) {
-    statusArea.innerHTML = `<div class="status-banner"><div class="status-banner-title">포지션 유지 중</div><div class="status-banner-value">${state.openPosition.direction === 'long' ? '롱' : '숏'} · 진입 ${state.openPosition.entryPrice || '-'}</div></div>`;
+    statusArea.innerHTML = `<div class="status-banner"><div class="status-banner-title">포지션 유지 중</div><div class="status-banner-value">${dirText(state.openPosition.direction)}${state.openPosition.flipped ? ' 🔄' : ''} · 진입 ${state.openPosition.entryPrice || '-'}</div></div>`;
   } else if (state.pendingEntry) {
     const elapsedMin = Math.floor((now() - state.pendingEntry.ts) / 60000);
     statusArea.innerHTML = `<div class="status-banner" style="background: var(--ink);"><div class="status-banner-title">진입 시도 진행 중</div><div class="status-banner-value">${elapsedMin}분 전 · AFTER TRADING 카드를 탭해</div></div>`;
@@ -1079,6 +1100,8 @@ function renderRiskScreen() {
   document.getElementById('risk-alert-area').innerHTML = '';
   document.getElementById('dir-long').classList.remove('selected');
   document.getElementById('dir-short').classList.remove('selected');
+  document.getElementById('dir-both').classList.remove('selected');
+  document.getElementById('input-entry-thesis').placeholder = THESIS_PLACEHOLDER.single;
   const limit = state.seed ? (state.seed * state.riskPct / 100).toFixed(0) : null;
   const used = getDailyStat().loss;
   const remaining = limit ? (limit - used).toFixed(0) : null;
@@ -1118,10 +1141,19 @@ function checkRisk() {
   btn.disabled = !tempDirection;
 }
 
+// [v0.1.11] 방향: long / short / both(양방향 조건부 시나리오)
+const THESIS_PLACEHOLDER = {
+  single: '예: 4H 매물대 하단 지지 + 거래량 급증 확인',
+  both: '예: 62000 돌파 시 롱 / 59000 이탈 시 숏',
+};
+function dirText(d) { return d === 'long' ? '롱' : d === 'short' ? '숏' : d === 'both' ? '양방향' : '-'; }
+
 function selectDirection(dir) {
   tempDirection = dir;
   document.getElementById('dir-long').classList.toggle('selected', dir === 'long');
   document.getElementById('dir-short').classList.toggle('selected', dir === 'short');
+  document.getElementById('dir-both').classList.toggle('selected', dir === 'both');
+  document.getElementById('input-entry-thesis').placeholder = dir === 'both' ? THESIS_PLACEHOLDER.both : THESIS_PLACEHOLDER.single;
   checkRisk();
 }
 
@@ -1283,20 +1315,73 @@ function forgotReturn() {
   });
 }
 
+let actualDirection = null;
 function confirmEntered() {
   goto('screen-tp-sl');
   document.getElementById('input-entry-price').value = '';
   document.getElementById('input-tp').value = '';
   document.getElementById('input-sl').value = '';
+  document.getElementById('input-flip-reason').value = '';
+  document.getElementById('input-flip-loss').value = state.pendingEntry?.expectedLoss ?? '';
+  const planned = state.pendingEntry?.direction;
+  document.getElementById('planned-dir-label').textContent = planned ? `· 계획: ${dirText(planned)}` : '';
+  // 단일 방향 계획이면 그 방향을 미리 선택 (기존 흐름 그대로), 양방향이면 직접 선택
+  selectActualDirection(planned === 'long' || planned === 'short' ? planned : null);
+}
+
+function isFlipped() {
+  const planned = state.pendingEntry?.direction;
+  return !!actualDirection && (planned === 'long' || planned === 'short') && planned !== actualDirection;
+}
+
+function selectActualDirection(dir) {
+  actualDirection = dir;
+  document.getElementById('act-long').classList.toggle('selected', dir === 'long');
+  document.getElementById('act-short').classList.toggle('selected', dir === 'short');
+  document.getElementById('flip-area').hidden = !isFlipped();
+  if (isFlipped()) checkFlipLoss();
+}
+
+function remainingLimit() {
+  if (!state.seed) return null;
+  return state.seed * state.riskPct / 100 - getDailyStat().loss;
+}
+
+function checkFlipLoss() {
+  const val = Math.abs(parseFloat(document.getElementById('input-flip-loss').value) || 0);
+  const hint = document.getElementById('flip-loss-hint');
+  const rem = remainingLimit();
+  if (!val) { hint.textContent = '반대 방향 스탑 기준으로 다시 계산해서 입력.'; hint.className = 'input-hint'; return; }
+  if (rem !== null && val > rem) {
+    hint.textContent = `⚠️ 남은 한도 $${rem.toFixed(0)} 초과. 이미 진입했으니 기록은 남기지만, 비중을 줄이거나 스탑을 당겨.`;
+    hint.className = 'input-hint danger';
+  } else {
+    hint.textContent = rem !== null ? `✓ 한도 내 · 남은 한도 $${(rem - val).toFixed(0)}` : '';
+    hint.className = 'input-hint success';
+  }
 }
 
 function saveTPSL() {
   const entry = document.getElementById('input-entry-price').value.trim();
   const tp = document.getElementById('input-tp').value.trim();
   const sl = document.getElementById('input-sl').value.trim();
+  if (!actualDirection) { alert('실제 진입 방향을 골라줘.'); return; }
   if (!entry || !tp || !sl) { alert('진입가, TP, SL 모두 입력해줘.'); return; }
+  const flipped = isFlipped();
+  let expectedLoss = state.pendingEntry.expectedLoss;
+  let flipReason = '';
+  if (flipped) {
+    flipReason = document.getElementById('input-flip-reason').value.trim();
+    const loss = Math.abs(parseFloat(document.getElementById('input-flip-loss').value) || 0);
+    if (!flipReason) { alert('반대로 들어간 이유는 필수야.'); return; }
+    if (!loss) { alert('반대 방향 기준 예상 손실을 입력해줘.'); return; }
+    expectedLoss = loss;
+  }
   state.openPosition = {
     ...state.pendingEntry,
+    plannedDirection: state.pendingEntry.direction,
+    direction: actualDirection,
+    expectedLoss, flipped, flipReason,
     entryPrice: entry, tp, sl, confirmedAt: now(),
   };
   state.pendingEntry = null;
@@ -1304,11 +1389,13 @@ function saveTPSL() {
   saveState();
   addRecord('entry', {
     direction: state.openPosition.direction,
+    plannedDirection: state.openPosition.plannedDirection,
+    flipped, flipReason,
     entryPrice: entry, tp, sl,
     expectedLoss: state.openPosition.expectedLoss,
     thesis: state.openPosition.thesis || '',
   });
-  document.getElementById('fb-dir').textContent = state.openPosition.direction === 'long' ? '롱 ↑' : '숏 ↓';
+  document.getElementById('fb-dir').textContent = (state.openPosition.direction === 'long' ? '롱 ↑' : '숏 ↓') + (flipped ? ' 🔄 반대 진입' : '');
   document.getElementById('fb-entry').textContent = entry;
   document.getElementById('fb-tpsl').textContent = `${tp} / ${sl}`;
   document.getElementById('fb-loss').textContent = `$${state.openPosition.expectedLoss}`;
@@ -1409,12 +1496,15 @@ function renderLog() {
     switch (r.type) {
       case 'entry':
         badge = '<span class="log-badge entry">진입</span>';
-        title = `${r.direction === 'long' ? '롱' : '숏'} @ ${r.entryPrice}`;
-        desc = `TP ${r.tp} · SL ${r.sl} · 예상손실 $${r.expectedLoss}` + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '');
+        title = `${dirText(r.direction)} @ ${r.entryPrice}` + (r.flipped ? ' 🔄' : '');
+        desc = `TP ${r.tp} · SL ${r.sl} · 예상손실 $${r.expectedLoss}`
+          + (r.plannedDirection && r.plannedDirection !== r.direction ? `<br>계획: ${dirText(r.plannedDirection)} → 실제: ${dirText(r.direction)}` : '')
+          + (r.flipped ? `<br><b style="color: var(--danger);">반대 진입</b> · ${esc(r.flipReason || '')}` : '')
+          + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '');
         break;
       case 'entry_attempt':
         badge = '<span class="log-badge wait">시도</span>';
-        title = `${r.direction === 'long' ? '롱' : '숏'} 진입 시도`;
+        title = `${dirText(r.direction)} 진입 시도`;
         desc = `예상손실 $${r.expectedLoss}` + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '');
         break;
       case 'entry_forgotten':
@@ -1544,7 +1634,7 @@ function buildMarkdown() {
     close_loss: '손절',
     close_even: '본전',
   };
-  const dirLabel = d => d === 'long' ? '롱 ↑' : d === 'short' ? '숏 ↓' : '-';
+  const dirLabel = d => d === 'long' ? '롱 ↑' : d === 'short' ? '숏 ↓' : d === 'both' ? '양방향 ⇅' : '-';
   const fmt = ts => new Date(ts).toLocaleString('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit'
@@ -1599,6 +1689,8 @@ function buildMarkdown() {
           break;
         case 'entry':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
+          if (r.plannedDirection && r.plannedDirection !== r.direction) md += `- 계획: ${dirLabel(r.plannedDirection)} → 실제: ${dirLabel(r.direction)}${r.flipped ? ' (🔄 반대 진입)' : ''}\n`;
+          if (r.flipped) md += `- 뒤집은 이유: ${r.flipReason || '_미기재_'}\n`;
           md += `- 진입가: ${r.entryPrice ?? '-'}\n`;
           md += `- TP / SL: ${r.tp ?? '-'} / ${r.sl ?? '-'}\n`;
           md += `- 예상 손실: $${r.expectedLoss ?? '-'}\n`;
@@ -1622,12 +1714,14 @@ function buildMarkdown() {
           if (r.position) {
             md += `- 포지션: 진입 ${r.position.entryPrice ?? '-'} / TP ${r.position.tp ?? '-'} / SL ${r.position.sl ?? '-'}\n`;
             if (r.position.thesis) md += `- 진입 근거: ${r.position.thesis}\n`;
+            if (r.position.flipped) md += `- 🔄 반대 진입 포지션 (계획: ${dirLabel(r.position.plannedDirection)}) · ${r.position.flipReason || ''}\n`;
           }
           break;
         case 'close_even':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
           if (r.reason) md += `- 사유: ${r.reason}\n`;
           if (r.position?.thesis) md += `- 진입 근거: ${r.position.thesis}\n`;
+          if (r.position?.flipped) md += `- 🔄 반대 진입 포지션 (계획: ${dirLabel(r.position.plannedDirection)}) · ${r.position.flipReason || ''}\n`;
           break;
         case 'checking':
           md += r.during ? `- ⚠️ ${r.during === '냉각기' ? '냉각기 중' : '한도 도달 후'} 경고 무시하고 확인\n` : `- (이벤트 기록)\n`;
