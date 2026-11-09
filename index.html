@@ -508,6 +508,10 @@
   <div class="content">
     <h1 class="page-title">잘했어.</h1>
     <p class="page-subtitle">왜 참았는지 기록하자. 다음에 도움이 돼.</p>
+    <div class="input-group">
+      <label class="input-label">뭐가 달랐어? (선택)</label>
+      <textarea class="textarea" id="wait-note" rows="2" placeholder="예: 75,300 지지 기대했는데 거래량 없이 이탈"></textarea>
+    </div>
     <button class="choice-btn" onclick="saveWait('기다림')"><span>기다림<span class="choice-desc">조건 미충족, 좋은 자리 대기</span></span></button>
     <button class="choice-btn" onclick="saveWait('놓침')"><span>놓침<span class="choice-desc">자리 맞았는데 못 들어감</span></span></button>
     <button class="choice-btn" onclick="saveWait('다른생각발견')"><span>다른 생각 발견<span class="choice-desc">시나리오 보강 필요</span></span></button>
@@ -527,6 +531,7 @@
     <div class="principle-box">
       <div class="principle-text">"나는 이 근거로 진입하지 않았다.<br>이후 시세가 어떻게 가든<br>내 선택을 존중한다.<br>포모에 흔들리지 않는다."</div>
     </div>
+    <div class="input-hint" id="fomo-scenario-note" style="margin-bottom: 8px;"></div>
     <div class="btn-group">
       <button class="btn btn-primary" onclick="finishWait()">약속합니다</button>
     </div>
@@ -795,7 +800,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.12';
+const APP_VERSION = 'v0.1.13';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -1045,15 +1050,19 @@ function renderScenarioExisting() {
   const area = document.getElementById('scenario-existing-area');
   const btn = document.getElementById('scenario-next-btn');
   const hoursLeft = Math.floor((state.scenario.expiresAt - now()) / 3600000);
+  const nu = state.scenario.needsUpdate;
+  const useBtn = `<button class="btn ${nu ? 'btn-secondary' : 'btn-primary'}" style="padding:14px; font-size:14px;${nu ? ' margin-top:8px;' : ''}" onclick="useExistingScenario()">${nu ? '보강 없이 그대로 쓰기' : '이 시나리오 그대로 쓰기'}</button>`;
+  const updBtn = `<button class="btn ${nu ? 'btn-primary' : 'btn-secondary'}" style="padding:14px; font-size:14px;${nu ? '' : ' margin-top:8px;'}" onclick="updateScenario()">업데이트 (새 캡처)</button>`;
   area.innerHTML = `
-    <div class="alert success">✓ 오늘 시나리오가 있어 (${hoursLeft}시간 남음).<br>그대로 쓸지 업데이트할지 골라.</div>
+    ${nu
+      ? `<div class="alert warn">⚠️ 지난번에 "다른 생각 발견"으로 접은 시나리오야 (${hoursLeft}시간 남음).<br>${nu !== '보강 필요' ? `메모: ${esc(nu)}<br>` : ''}보강해서 새로 캡처하는 게 먼저야.</div>`
+      : `<div class="alert success">✓ 오늘 시나리오가 있어 (${hoursLeft}시간 남음).<br>그대로 쓸지 업데이트할지 골라.</div>`}
     <div class="card">
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
         <img src="${state.scenario.images[0]}" style="width:50%; max-height:120px; object-fit:cover; border-radius:8px;">
         <img src="${state.scenario.images[1]}" style="width:50%; max-height:120px; object-fit:cover; border-radius:8px;">
       </div>
-      <button class="btn btn-primary" style="padding:14px; font-size:14px;" onclick="useExistingScenario()">이 시나리오 그대로 쓰기</button>
-      <button class="btn btn-secondary" style="padding:14px; font-size:14px; margin-top:8px;" onclick="updateScenario()">업데이트 (새 캡처)</button>
+      ${nu ? updBtn + useBtn : useBtn + updBtn}
     </div>
     <div class="section-label">또는 새 캡처 첨부</div>`;
   btn.disabled = true;
@@ -1496,8 +1505,21 @@ function finishEntry() { goto('screen-home'); }
 
 function confirmWaited() { goto('screen-wait-reason'); }
 
+// [v0.1.13] 시나리오 틀림 → 캡처 폐기(다음엔 새 캡처 필수) / 다른 생각 발견 → 보강 필요 표시
 function saveWait(reason) {
-  addRecord('wait', { reason, direction: state.pendingEntry?.direction, thesis: state.pendingEntry?.thesis || '' });
+  const noteEl = document.getElementById('wait-note');
+  const note = noteEl.value.trim();
+  noteEl.value = '';
+  addRecord('wait', { reason, note, direction: state.pendingEntry?.direction, thesis: state.pendingEntry?.thesis || '' });
+  let scnNote = '';
+  if (reason === '시나리오틀림') {
+    state.scenario = { images: [null, null], uploadedAt: null, expiresAt: null };
+    scnNote = '틀린 시나리오 캡처는 폐기했어. 다음 TRADING은 새 캡처부터.';
+  } else if (reason === '다른생각발견' && state.scenario) {
+    state.scenario.needsUpdate = note || '보강 필요';
+    scnNote = '이 시나리오는 "보강 필요"로 표시했어. 다음 TRADING에서 업데이트를 먼저 권할게.';
+  }
+  document.getElementById('fomo-scenario-note').textContent = scnNote;
   getDailyStat().waits += 1;
   state.pendingEntry = null;
   saveState();
@@ -1686,7 +1708,7 @@ function renderLog() {
       case 'wait':
         badge = '<span class="log-badge wait">참음</span>';
         title = r.reason || '참음';
-        desc = '포모 방지 다짐 완료';
+        desc = (r.note ? `${esc(r.note)}<br>` : '') + '포모 방지 다짐 완료';
         break;
       case 'close_profit':
         badge = '<span class="log-badge profit">익절</span>';
@@ -1879,6 +1901,7 @@ function buildMarkdown() {
           md += `- 방향: ${dirLabel(r.direction)}\n`;
           if (r.thesis) md += `- 원래 근거: ${r.thesis}\n`;
           md += `- 참은 이유: ${r.reason || '_미기재_'}\n`;
+          if (r.note) md += `- 뭐가 달랐어: ${r.note}\n`;
           break;
         case 'tpsl_edit':
           if (r.prev) md += `- 이전: TP ${r.prev.tp ?? '-'} / SL ${r.prev.sl ?? '-'}\n`;
