@@ -196,6 +196,16 @@
   }
   .alert.warn { background: #FFFBEA; border-color: #F5E6B8; color: var(--warn); }
   .alert.success { background: #F0F8F3; border-color: #D0E5DA; color: var(--success); }
+  /* [v0.1.12] 매매 중 시나리오 */
+  .plan-box {
+    background: var(--card); border-left: 4px solid var(--ink);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
+    font-size: 15px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  }
+  .plan-box-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-3); margin-bottom: 6px; white-space: normal; }
+  .scn-img { width: 100%; max-height: 280px; object-fit: cover; object-position: top; border-radius: 10px; display: block; margin-bottom: 6px; cursor: zoom-in; }
+  .scn-img.zoom { max-height: none; cursor: zoom-out; }
+  .scn-img-hint { font-size: 11px; color: var(--ink-3); text-align: center; margin-bottom: 12px; }
   .modal-backdrop {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.5);
@@ -387,9 +397,10 @@
     <div class="header-placeholder"></div>
   </div>
   <div class="content">
-    <h1 class="page-title">잠깐.</h1>
-    <p class="page-subtitle">들어가기 전에 한 번 읽고 가자.</p>
-    <div class="principle-box">
+    <h1 class="page-title" id="checking-title">잠깐.</h1>
+    <p class="page-subtitle" id="checking-subtitle">들어가기 전에 한 번 읽고 가자.</p>
+    <div id="checking-scenario"></div>
+    <div class="principle-box" id="checking-principle-box">
       <div class="principle-text" id="checking-principle-text"></div>
     </div>
     <div class="btn-group">
@@ -447,12 +458,17 @@
       <input type="text" class="input" id="input-entry-price" placeholder="예: 62150">
     </div>
     <div class="input-group">
-      <label class="input-label">목표가 (TP)</label>
+      <label class="input-label">목표가 (TP1 · 여기서 전량 익절)</label>
       <input type="text" class="input" id="input-tp" placeholder="예: 63800">
     </div>
     <div class="input-group">
       <label class="input-label">손절가 (SL)</label>
       <input type="text" class="input" id="input-sl" placeholder="예: 61500">
+    </div>
+    <div class="input-group">
+      <label class="input-label">다음 매매 — TP1을 넘어가면? (필수)</label>
+      <textarea class="textarea" id="input-next-plan" rows="3" placeholder="예: 75,300 이탈 후 못 올라오면 숏 재진입 · SL 75,600 · TP1 74,500"></textarea>
+      <div class="input-hint">TP1에서 털었는데 더 가면, 포모 대신 이걸로 매매한다.</div>
     </div>
     <div class="btn-group">
       <button class="btn btn-primary" onclick="saveTPSL()">저장 · 피드백</button>
@@ -475,6 +491,7 @@
       <div class="card-row"><span class="card-row-label">TP / SL</span><span class="card-row-value" id="fb-tpsl">-</span></div>
       <div class="card-row"><span class="card-row-label">예상 손실</span><span class="card-row-value" id="fb-loss">-</span></div>
     </div>
+    <div class="plan-box"><div class="plan-box-label">다음 매매 · TP1을 넘어가면</div><span id="fb-next"></span></div>
     <div class="principle-box"><div class="principle-text" id="entry-feedback-principle"></div></div>
     <div class="btn-group">
       <button class="btn btn-primary" onclick="finishEntry()">종료</button>
@@ -516,6 +533,26 @@
   </div>
 </div>
 
+<div id="screen-profit-pledge" class="screen">
+  <div class="header">
+    <div class="header-placeholder"></div>
+    <div class="header-title">다짐</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">계획대로 나왔어.</h1>
+    <p class="page-subtitle">이후 시세는 네 책임이 아니야.</p>
+    <div class="principle-box">
+      <div class="principle-text">"나는 계획한 자리에서 나왔다.<br>더 가도 놓친 게 아니라<br>다음 매매다.<br>포모로 들어가지 않는다."</div>
+    </div>
+    <div class="plan-box"><div class="plan-box-label">다음 매매 · TP1을 넘어가면</div><span id="pledge-next"></span></div>
+    <div class="input-hint">들어가려면 TRADING부터 — 시나리오 · 손실액 · 원칙을 다시 거친다.</div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="goto('screen-home')">약속합니다</button>
+    </div>
+  </div>
+</div>
+
 <div id="screen-return-checking" class="screen">
   <div class="header">
     <div class="header-placeholder"></div>
@@ -539,7 +576,7 @@
   <div class="content">
     <h1 class="page-title">뭐 할래?</h1>
     <p class="page-subtitle">선택에 따라 다른 경로로 가.</p>
-    <button class="choice-btn" onclick="goto('screen-tpsl-edit')"><span>TP/SL 수정</span><span class="choice-arrow">→</span></button>
+    <button class="choice-btn" onclick="openTpslEdit()"><span>TP/SL 수정</span><span class="choice-arrow">→</span></button>
     <button class="choice-btn" onclick="goto('screen-close-choice')"><span>포지션 종료</span><span class="choice-arrow">→</span></button>
   </div>
 </div>
@@ -554,13 +591,15 @@
     <h1 class="page-title">왜 바꿔?</h1>
     <p class="page-subtitle">원래 시나리오 벗어나는지 스스로 확인해.</p>
     <div class="alert warn">💡 스탑을 미는 순간, 원칙이 죽어. 확신 있어?</div>
+    <div id="edit-scenario"></div>
     <div class="input-group">
       <label class="input-label">새 TP (변경 시만)</label>
-      <input type="text" class="input" id="edit-tp" placeholder="기존값 유지하려면 비워둬">
+      <input type="text" class="input" id="edit-tp" placeholder="기존값 유지하려면 비워둬" oninput="classifyEdit()">
     </div>
     <div class="input-group">
       <label class="input-label">새 SL (변경 시만)</label>
-      <input type="text" class="input" id="edit-sl" placeholder="기존값 유지하려면 비워둬">
+      <input type="text" class="input" id="edit-sl" placeholder="기존값 유지하려면 비워둬" oninput="classifyEdit()">
+      <div class="input-hint" id="edit-class-hint"></div>
     </div>
     <div class="input-group">
       <label class="input-label">변경 이유 (필수)</label>
@@ -756,7 +795,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'v0.1.11';
+const APP_VERSION = 'v0.1.12';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -888,6 +927,14 @@ function saveState() {
         alert('⚠️ 저장 공간 부족으로 시나리오 캡처를 비웠어. 기록은 저장됐어. 다음 매매 때 캡처를 다시 첨부해.');
         return true;
       } catch (e2) {}
+    }
+    if (state.positionCard) {
+      state.positionCard = null;
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        alert('⚠️ 저장 공간 부족으로 매매 중 시나리오 카드를 비웠어. 기록은 저장됐어.');
+        return true;
+      } catch (e3) {}
     }
     alert('⚠️ 저장 실패: 저장 공간이 부족해. 설정 → 내보내기로 백업한 뒤 초기화해줘.\n(' + e.name + ')');
     return false;
@@ -1247,11 +1294,45 @@ function startChecking() {
 }
 
 function openChecking() {
-  const p = checkingWarning ? COOLDOWN_PRINCIPLE : state.openPosition
+  const pos = state.openPosition;
+  const p = checkingWarning ? COOLDOWN_PRINCIPLE : pos
     ? randomPrinciple(['meta', 'philosophy', 'emotion'])
     : randomPrinciple(['meta', 'philosophy']);
   document.getElementById('checking-principle-text').textContent = p;
+  // [v0.1.12] 포지션이 있으면 원칙 대신 지금 매매 중인 시나리오 (냉각기·한도 경고 중엔 경고 원칙도 같이)
+  document.getElementById('checking-title').textContent = pos ? '어떻게 하기로 했지?' : '잠깐.';
+  document.getElementById('checking-subtitle').textContent = pos
+    ? '지금 매매 중인 시나리오야. 보고 들어가자.'
+    : '들어가기 전에 한 번 읽고 가자.';
+  document.getElementById('checking-scenario').innerHTML = pos ? scenarioPanelHTML(pos) : '';
+  document.getElementById('checking-principle-box').style.display = (pos && !checkingWarning) ? 'none' : '';
   goto('screen-checking');
+}
+
+// [v0.1.12] 매매 중 시나리오 패널 — 카드 이미지 · 진입 · TP1/SL(원래 값) · 다음 매매
+function num(v) { return parseFloat(String(v ?? '').replace(/[,\s$]/g, '')); }
+function heldText(ts) {
+  if (!ts) return '-';
+  const m = Math.floor((now() - ts) / 60000);
+  return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`;
+}
+function withOrig(cur, orig) {
+  return orig && String(orig) !== String(cur) ? `${esc(cur)} <span style="color: var(--ink-3); font-weight: 400;">(원래 ${esc(orig)})</span>` : esc(cur ?? '-');
+}
+function scenarioPanelHTML(pos) {
+  const img = state.positionCard
+    ? `<img class="scn-img" src="${state.positionCard}" onclick="this.classList.toggle('zoom')"><div class="scn-img-hint">탭하면 카드 전체</div>`
+    : '';
+  return `${img}
+    <div class="card">
+      <div class="card-row"><span class="card-row-label">방향</span><span class="card-row-value">${pos.direction === 'long' ? '롱 ↑' : '숏 ↓'}${pos.flipped ? ' 🔄' : ''}</span></div>
+      <div class="card-row"><span class="card-row-label">진입가</span><span class="card-row-value">${esc(pos.entryPrice ?? '-')}</span></div>
+      <div class="card-row"><span class="card-row-label">TP1 (전량)</span><span class="card-row-value">${withOrig(pos.tp, pos.origTp)}</span></div>
+      <div class="card-row"><span class="card-row-label">SL</span><span class="card-row-value">${withOrig(pos.sl, pos.origSl)}</span></div>
+      <div class="card-row"><span class="card-row-label">보유</span><span class="card-row-value">${heldText(pos.confirmedAt)}</span></div>
+    </div>
+    <div class="plan-box"><div class="plan-box-label">다음 매매 · TP1을 넘어가면</div>${esc(pos.nextPlan || '— 미기재')}</div>
+    ${pos.thesis ? `<div class="input-hint" style="margin-bottom: 12px;">진입 근거: ${esc(pos.thesis)}</div>` : ''}`;
 }
 
 // [v0.1.4] 사용자가 비트겟 다녀온 후 직접 탭하는 진입점
@@ -1367,6 +1448,8 @@ function saveTPSL() {
   const sl = document.getElementById('input-sl').value.trim();
   if (!actualDirection) { alert('실제 진입 방향을 골라줘.'); return; }
   if (!entry || !tp || !sl) { alert('진입가, TP, SL 모두 입력해줘.'); return; }
+  const nextPlan = document.getElementById('input-next-plan').value.trim();
+  if (!nextPlan) { alert('다음 매매(TP1을 넘어가면)를 적어줘. 더 갈 때 포모 대신 이걸로 매매해.'); return; }
   const flipped = isFlipped();
   let expectedLoss = state.pendingEntry.expectedLoss;
   let flipReason = '';
@@ -1383,7 +1466,10 @@ function saveTPSL() {
     direction: actualDirection,
     expectedLoss, flipped, flipReason,
     entryPrice: entry, tp, sl, confirmedAt: now(),
+    origTp: tp, origSl: sl, nextPlan,
   };
+  // [v0.1.12] 포지션이 열린 동안 CHECKING에 보여 줄 카드 (시나리오 캡처 24시간 만료와 무관) — 청산 때 지움
+  state.positionCard = (state.scenario && (state.scenario.images[1] || state.scenario.images[0])) || null;
   state.pendingEntry = null;
   getDailyStat().entries += 1;
   saveState();
@@ -1394,11 +1480,14 @@ function saveTPSL() {
     entryPrice: entry, tp, sl,
     expectedLoss: state.openPosition.expectedLoss,
     thesis: state.openPosition.thesis || '',
+    nextPlan,
   });
   document.getElementById('fb-dir').textContent = (state.openPosition.direction === 'long' ? '롱 ↑' : '숏 ↓') + (flipped ? ' 🔄 반대 진입' : '');
   document.getElementById('fb-entry').textContent = entry;
   document.getElementById('fb-tpsl').textContent = `${tp} / ${sl}`;
   document.getElementById('fb-loss').textContent = `$${state.openPosition.expectedLoss}`;
+  document.getElementById('fb-next').textContent = nextPlan;
+  document.getElementById('input-next-plan').value = '';
   document.getElementById('entry-feedback-principle').textContent = randomPrinciple(['entry', 'emotion']);
   goto('screen-entry-feedback');
 }
@@ -1417,19 +1506,94 @@ function saveWait(reason) {
 
 function finishWait() { goto('screen-home'); }
 
+// [v0.1.12] 변경의 방향 — 위험을 줄이는 변경(TP 당기기 · SL 당기기)은 자유, 키우는 변경(TP 멀리 · SL 넓히기)은 한 번 더 막는다
+const EDIT_HINT_DEFAULT = '줄이는 변경(TP 당기기 · SL 당기기)은 언제든 OK. 키우는 변경(TP 멀리 · SL 넓히기)은 그 자리에서 하지 않기로 했어.';
+function openTpslEdit() {
+  const pos = state.openPosition;
+  document.getElementById('edit-scenario').innerHTML = pos ? `
+    <div class="card">
+      <div class="card-row"><span class="card-row-label">지금 TP1 / SL</span><span class="card-row-value">${esc(pos.tp)} / ${esc(pos.sl)}</span></div>
+      ${pos.origTp ? `<div class="card-row"><span class="card-row-label">진입 때 계획</span><span class="card-row-value">${esc(pos.origTp)} / ${esc(pos.origSl)}</span></div>` : ''}
+    </div>
+    <div class="plan-box"><div class="plan-box-label">다음 매매 · TP1을 넘어가면</div>${esc(pos.nextPlan || '— 미기재')}</div>` : '';
+  classifyEdit();
+  goto('screen-tpsl-edit');
+}
+
+function editKind() {
+  const pos = state.openPosition;
+  const up = [], down = [];
+  if (pos) {
+    const long = pos.direction === 'long';
+    const tpIn = document.getElementById('edit-tp').value.trim();
+    const slIn = document.getElementById('edit-sl').value.trim();
+    if (tpIn) {
+      const a = num(pos.tp), b = num(tpIn);
+      if (!isNaN(a) && !isNaN(b) && a !== b) {
+        if (long ? b > a : b < a) up.push('TP 멀리'); else down.push('TP 당김');
+      }
+    }
+    if (slIn) {
+      const a = num(pos.sl), b = num(slIn);
+      if (!isNaN(a) && !isNaN(b) && a !== b) {
+        if (long ? b < a : b > a) up.push('SL 넓힘'); else down.push('SL 당김');
+      }
+    }
+  }
+  const kind = up.length ? 'risk_up' : down.length ? 'risk_down' : 'unknown';
+  return { kind, parts: [...up, ...down], up, down };
+}
+
+function classifyEdit() {
+  const hint = document.getElementById('edit-class-hint');
+  const k = editKind();
+  if (k.kind === 'risk_up') {
+    hint.textContent = `⚠️ 위험을 키우는 변경 (${k.up.join(' · ')}). 그 자리에서 하지 않기로 했어. TP1을 넘어가면 → 다음 매매.`;
+    hint.className = 'input-hint danger';
+  } else if (k.kind === 'risk_down') {
+    hint.textContent = `✓ 위험을 줄이는 변경 (${k.down.join(' · ')}). 언제든 OK.`;
+    hint.className = 'input-hint success';
+  } else {
+    hint.textContent = EDIT_HINT_DEFAULT;
+    hint.className = 'input-hint';
+  }
+}
+
+function clearEditInputs() {
+  ['edit-tp', 'edit-sl', 'edit-reason'].forEach(id => { document.getElementById(id).value = ''; });
+}
+
 function saveEditTPSL() {
   const tp = document.getElementById('edit-tp').value.trim();
   const sl = document.getElementById('edit-sl').value.trim();
   const reason = document.getElementById('edit-reason').value.trim();
   if (!reason) { alert('변경 이유는 필수야.'); return; }
+  const k = editKind();
+  if (k.kind === 'risk_up') {
+    const pos = state.openPosition;
+    showModal({
+      title: '위험을 키우는 변경이야',
+      text: `${esc(k.up.join(' · '))}<br><br>진입 때 계획: TP1 ${esc(pos.origTp || pos.tp)} / SL ${esc(pos.origSl || pos.sl)}<br>TP1을 넘어가면: ${esc(pos.nextPlan || '— 미기재')}<br><br>지금 이유가 차트에 있어, 마음에 있어?`,
+      buttons: [
+        { label: '그대로 둘게', class: 'btn-primary', onClick: () => {
+          addRecord('tpsl_hold', { attempt: { tp: tp || null, sl: sl || null }, parts: k.up, reason });
+          hideModal(); clearEditInputs(); goto('screen-home');
+        }},
+        { label: '그래도 바꿀게', class: 'btn-danger', onClick: () => { hideModal(); applyEdit(tp, sl, reason, k); } },
+      ]
+    });
+    return;
+  }
+  applyEdit(tp, sl, reason, k);
+}
+
+function applyEdit(tp, sl, reason, k) {
   const prev = { tp: state.openPosition.tp, sl: state.openPosition.sl };
   if (tp) state.openPosition.tp = tp;
   if (sl) state.openPosition.sl = sl;
   saveState();
-  addRecord('tpsl_edit', { prev, new: { tp: state.openPosition.tp, sl: state.openPosition.sl }, reason });
-  document.getElementById('edit-tp').value = '';
-  document.getElementById('edit-sl').value = '';
-  document.getElementById('edit-reason').value = '';
+  addRecord('tpsl_edit', { prev, new: { tp: state.openPosition.tp, sl: state.openPosition.sl }, reason, kind: k.kind, parts: k.parts });
+  clearEditInputs();
   goto('screen-home');
 }
 
@@ -1452,12 +1616,19 @@ function saveClose(type) {
     getDailyStat().loss += amount;
     state.cooldownUntil = now() + 30 * 60000;
   }
+  const closedNext = state.openPosition?.nextPlan || '';
   state.openPosition = null;
+  state.positionCard = null;
   saveState();
   ['profit-amount','profit-reason','loss-amount','loss-reason','even-reason'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   if (type === 'loss') goto('screen-cooldown');
+  else if (type === 'profit') {
+    // [v0.1.12] 익절 뒤 포모 다짐 — 더 가는 장면은 다음 매매로
+    document.getElementById('pledge-next').textContent = closedNext || '— 미기재 (다음엔 진입 때 적어 두자)';
+    goto('screen-profit-pledge');
+  }
   else goto('screen-home');
 }
 
@@ -1500,7 +1671,8 @@ function renderLog() {
         desc = `TP ${r.tp} · SL ${r.sl} · 예상손실 $${r.expectedLoss}`
           + (r.plannedDirection && r.plannedDirection !== r.direction ? `<br>계획: ${dirText(r.plannedDirection)} → 실제: ${dirText(r.direction)}` : '')
           + (r.flipped ? `<br><b style="color: var(--danger);">반대 진입</b> · ${esc(r.flipReason || '')}` : '')
-          + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '');
+          + (r.thesis ? `<br>근거: ${esc(r.thesis)}` : '')
+          + (r.nextPlan ? `<br>다음 매매: ${esc(r.nextPlan)}` : '');
         break;
       case 'entry_attempt':
         badge = '<span class="log-badge wait">시도</span>';
@@ -1532,9 +1704,14 @@ function renderLog() {
         desc = r.reason;
         break;
       case 'tpsl_edit':
-        badge = '<span class="log-badge wait">수정</span>';
-        title = 'TP/SL 변경';
-        desc = r.reason;
+        badge = r.kind === 'risk_up' ? '<span class="log-badge loss">수정</span>' : '<span class="log-badge wait">수정</span>';
+        title = 'TP/SL 변경' + (r.kind === 'risk_up' ? ' ⚠️ 위험 키움' : r.kind === 'risk_down' ? ' · 위험 줄임' : '');
+        desc = (r.prev && r.new ? `${esc(r.prev.tp)} / ${esc(r.prev.sl)} → ${esc(r.new.tp)} / ${esc(r.new.sl)}<br>` : '') + esc(r.reason || '');
+        break;
+      case 'tpsl_hold':
+        badge = '<span class="log-badge profit">참음</span>';
+        title = '위험 키우는 변경 참음';
+        desc = `${esc((r.parts || []).join(' · '))}<br>${esc(r.reason || '')}`;
         break;
       case 'checking':
         badge = r.during ? '<span class="log-badge loss">확인</span>' : '<span class="log-badge wait">확인</span>';
@@ -1630,6 +1807,7 @@ function buildMarkdown() {
     wait: '참음',
     checking: '체킹 진입',
     tpsl_edit: 'TP/SL 수정',
+    tpsl_hold: 'TP/SL 변경 참음',
     close_profit: '익절',
     close_loss: '손절',
     close_even: '본전',
@@ -1695,6 +1873,7 @@ function buildMarkdown() {
           md += `- TP / SL: ${r.tp ?? '-'} / ${r.sl ?? '-'}\n`;
           md += `- 예상 손실: $${r.expectedLoss ?? '-'}\n`;
           md += `- 근거: ${r.thesis || '_미기재_'}\n`;
+          if (r.nextPlan) md += `- 다음 매매 (TP1을 넘어가면): ${r.nextPlan}\n`;
           break;
         case 'wait':
           md += `- 방향: ${dirLabel(r.direction)}\n`;
@@ -1704,6 +1883,11 @@ function buildMarkdown() {
         case 'tpsl_edit':
           if (r.prev) md += `- 이전: TP ${r.prev.tp ?? '-'} / SL ${r.prev.sl ?? '-'}\n`;
           if (r.new) md += `- 변경: TP ${r.new.tp ?? '-'} / SL ${r.new.sl ?? '-'}\n`;
+          if (r.kind === 'risk_up' || r.kind === 'risk_down') md += `- 방향: ${r.kind === 'risk_up' ? '⚠️ 위험 키움' : '위험 줄임'} (${(r.parts || []).join(' · ')})\n`;
+          if (r.reason) md += `- 사유: ${r.reason}\n`;
+          break;
+        case 'tpsl_hold':
+          md += `- 하려던 변경: ${(r.parts || []).join(' · ')} (TP ${r.attempt?.tp ?? '-'} / SL ${r.attempt?.sl ?? '-'})\n`;
           if (r.reason) md += `- 사유: ${r.reason}\n`;
           break;
         case 'close_profit':
