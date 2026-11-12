@@ -259,6 +259,39 @@
   .log-badge.profit { background: var(--success); color: #FFF; }
   .log-badge.loss { background: var(--danger); color: #FFF; }
   .hidden { display: none !important; }
+  /* [v0.1.15] 원칙 · 위반 판정 화면 */
+  .rl-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #EAEAEA; border-radius: 12px; padding: 4px; margin: 4px 0 18px; }
+  .rl-tab { border: none; background: transparent; border-radius: 9px; padding: 10px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink-3); cursor: pointer; }
+  .rl-tab.on { background: var(--card); color: var(--ink); }
+  .rl-meta { font-size: 12px; color: var(--ink-3); margin: -10px 0 18px; }
+  .rl-quote { background: var(--ink); color: #FFF; border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .rl-quote-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; opacity: 0.6; margin-bottom: 6px; }
+  .rl-quote-text { font-size: 15px; line-height: 1.6; font-weight: 500; }
+  .rl-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 10px; }
+  .rl-head { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+  .rl-num { font-size: 13px; font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .rl-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+  .rl-sub { font-size: 12px; color: var(--ink-3); font-weight: 500; margin-left: auto; text-align: right; }
+  .rl-card ul { margin: 0; padding-left: 18px; }
+  .rl-card li { font-size: 14px; color: var(--ink-2); line-height: 1.6; margin: 3px 0; }
+  .rl-card b { color: var(--ink); }
+  .rl-note { font-size: 13px; color: var(--ink-3); line-height: 1.55; margin-top: 8px; }
+  .rl-jar { border: 1.5px solid #E2B33C; }
+  .rl-verdict { border-left: 4px solid var(--ink); }
+  .rl-verdict.big { border-left-color: var(--danger); }
+  .rl-verdict.small { border-left-color: var(--warn); }
+  .rl-verdict.ok { border-left-color: var(--success); }
+  .rl-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; color: #FFF; background: var(--ink); margin-left: auto; white-space: nowrap; }
+  .rl-verdict.big .rl-tag { background: var(--danger); }
+  .rl-verdict.small .rl-tag { background: var(--warn); }
+  .rl-verdict.ok .rl-tag { background: var(--success); }
+  .rl-how { font-size: 12px; color: var(--ink-3); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .rl-steps { display: grid; gap: 6px; }
+  .rl-step { display: grid; grid-template-columns: 24px 1fr; gap: 8px; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+  .rl-step span:first-child { font-weight: 700; color: var(--ink); }
+  .rl-cool { display: grid; grid-template-columns: 76px 1fr; gap: 6px 10px; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+  .rl-cool div:nth-child(odd) { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .rl-foot { font-size: 12px; color: var(--ink-3); text-align: center; line-height: 1.6; margin: 18px 0 8px; }
   /* [v0.1.14] 코인병 팝업 — 새 채점 결과가 있을 때 한 번 */
   .cj-pop {
     position: fixed; inset: 0; z-index: 120; background: var(--bg);
@@ -313,7 +346,10 @@
     </div>
 
     <div style="margin-top: 20px; text-align: center;">
-      <button class="btn btn-secondary" onclick="goto('screen-log')" style="padding: 12px; font-size: 14px;">기록 보기</button>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button class="btn btn-secondary" onclick="goto('screen-log')" style="padding: 12px; font-size: 14px;">기록 보기</button>
+        <button class="btn btn-secondary" onclick="openRules()" style="padding: 12px; font-size: 14px;">원칙 보기</button>
+      </div>
     </div>
   </div>
 </div>
@@ -731,6 +767,159 @@
   </div>
 </div>
 
+<div id="screen-rules" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="goBack('screen-home')">←</button>
+    <div class="header-title">원칙</div>
+    <div class="header-placeholder"></div>
+  </div>
+  <div class="content">
+    <h1 class="page-title">매매 원칙</h1>
+    <div class="rl-tabs" role="tablist">
+      <button class="rl-tab on" id="rl-tab-rules" onclick="rulesTab('rules')">원칙</button>
+      <button class="rl-tab" id="rl-tab-judge" onclick="rulesTab('judge')">위반 판정</button>
+    </div>
+    <div class="rl-meta">11-12 확정 · 시험 11-13 시작 · 1차 판정 12-11</div>
+
+    <div id="rl-rules">
+      <div class="rl-quote">
+        <div class="rl-quote-label">내가 할 수 없는 것 (다짐으로 안 되는 것)</div>
+        <div class="rl-quote-text">맞았는데 못 먹었거나 손해가 이어진 나는, 복구심리가 작동해 TP를 멀리 보고, 스탑을 지우고, 한 포지션에서 한 번에 복구하려고 한다.</div>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-num">1</span><span class="rl-title">스탑 — 걸고, 지우지 않는다</span></div>
+        <ul>
+          <li>진입 후 <b>5분 안에</b> 비트겟 스탑 주문. <b>가진 전체 물량</b>에 건다 (2차를 넣어도 같은 스탑이 덮는다).</li>
+          <li>스탑이 멀거나 정할 수 없으면 <b>진입 없음</b>.</li>
+          <li>옮기는 것은 괜찮다 — 본전으로 당기기 · 관점이 바뀌어 다른 자리로. <b>비는 것은 안 된다</b> — 5분 넘게 비면 큰 위반.</li>
+        </ul>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-num">2</span><span class="rl-title">익절 — 확률 높은 자리에서 전량</span></div>
+        <ul>
+          <li>손익비가 작아도, 위치가 좋아도 <b>high probability 자리에서 전량 익절</b>.</li>
+          <li>시나리오에 적은 TP를 진입 후 <b>5분 안에</b> 비트겟 TP 주문으로 (전체 물량).</li>
+          <li>당기는 것은 괜찮다. 멀리 옮기거나 지우면 위반.</li>
+        </ul>
+        <div class="rl-note">「곳간에서 인심 난다 — 방어금이 있어야 조급하지 않다.」</div>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-num">3</span><span class="rl-title">구조 — 넣을 돈이 없게</span><span class="rl-sub">의지가 아니라 구조로</span></div>
+        <ul>
+          <li>선물 계좌 <b>1,000 USDT</b> (시드 4,000의 25%) · 나머지는 업비트.</li>
+          <li><b>격리 · 배율 10 고정</b> · 1차 진입 50% · 2차 100% — 2차까지 넣으면 더 넣을 것이 없다.</li>
+          <li>명목(포지션 크기) 한도 = <b>선물 계좌 잔고 × 10</b>. 수익으로 늘면 같이 늘고, 손실로 줄면 같이 준다.</li>
+          <li>언제 추가할지는 조건 없음 — 크기만 2차까지.</li>
+        </ul>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-num">4</span><span class="rl-title">사건 — 오면 쉰다</span><span class="rl-sub">사건 자체는 위반 아님</span></div>
+        <ul>
+          <li><b>수익구간</b>(1차 진입가에서 처음 건 스탑 거리의 2배)에 들었다가 <b>손실</b>로 끝난 매매 → <b>바로 다음 매매도 손실</b> = 사건.</li>
+          <li>손실은 수수료 빼기 전 손익으로. 본전은 손실이 아니다. 밤에도 같다. 손절 뒤 바로 스위칭도 예외 없다.</li>
+          <li>사건이 나면 <b>진입 금지 2시간</b>. 워치로 20분 이상 운동하면 1시간. 쉬는 동안 차트를 닫는다.</li>
+        </ul>
+        <div class="rl-note">까닭 — 「아는데 못 먹어서 오는 포모」가 「틀려서 생긴 손해」보다 크다.</div>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-num">5</span><span class="rl-title">확인 — 새 시나리오는 물어보고</span></div>
+        <ul>
+          <li>라스트찬스: 내 차트 1장 + Claude 확인 1장. 확인은 방향 승인이 아니라 한 번 더 고민하는 도장.</li>
+          <li>Claude 한도 중에는 <b>이미 확인받은 시나리오와 같을 때만</b> 진입 (기준선 · 방향 · SL · TP가 모두 같을 때). 하나라도 바뀌면 새 시나리오 → 진입 없음.</li>
+        </ul>
+      </div>
+      <div class="rl-card rl-jar">
+        <div class="rl-head"><span class="rl-title">코인병</span><span class="rl-sub"><a href="#" onclick="event.preventDefault(); openCoinJar(true);" style="color: inherit;">병 보기 →</a></span></div>
+        <ul>
+          <li>지킨 포지션 하나 = <b>코인 1</b> (손익과 상관없음)</li>
+          <li>안 지킨 매매가 있는 날 = 그날 코인 0</li>
+          <li>큰 위반 = <b>병 비움</b> (받은 보상은 유지, 하던 퀘스트를 0부터)</li>
+          <li>20 → 40 → 60 → … 찰 때마다 기준액 +200</li>
+          <li>시드를 늘리는 길은 병뿐 · 채점은 아침에 비트겟 기록으로</li>
+        </ul>
+        <div class="rl-note">보상은 1차 판정(12-11) 때 다시 정한다.</div>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-title">하지 않기로 한 것</span></div>
+        <ul>
+          <li>밤 매매 금지 — 없음</li>
+          <li>바닥(얼마 아래면 멈춤) — 없음. 「지킨 매매 손익 · 안 지킨 매매 손익」으로 본다</li>
+          <li>감시 봇 · 앱 잠금 · 거래 권한 키 — 없음</li>
+          <li>스캘핑 예외 — 없음. 따로 만들기 전까지 같은 규칙</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="rl-judge" class="hidden">
+      <div class="rl-card rl-verdict big">
+        <div class="rl-head"><span class="rl-title">큰 위반</span><span class="rl-tag">병 비움</span></div>
+        <ul>
+          <li>스탑이 <b>5분 넘게</b> 비었다 — 진입 뒤 첫 스탑까지, 또는 들고 있는 중에</li>
+          <li>명목이 <b>계좌 잔고 × 10</b>을 넘었다 — 배율을 올렸거나 돈을 더 넣었다</li>
+          <li><b>냉각 중에 진입</b>했다 — 사건 뒤 1시간 안, 또는 1~2시간 사이인데 운동 증명이 없다</li>
+        </ul>
+        <div class="rl-how">재는 법: 스탑 주문 이력(걸고 · 옮기고 · 지운 시각) · 체결을 시간순으로 쌓은 최대 명목 · 사건 시각 + 워치 운동 기록</div>
+      </div>
+      <div class="rl-card rl-verdict small">
+        <div class="rl-head"><span class="rl-title">작은 위반</span><span class="rl-tag">그날 코인 0</span></div>
+        <ul>
+          <li>진입 후 <b>5분 안에 TP 주문</b>이 없다</li>
+          <li>처음 건 TP보다 <b>멀리 옮겼다</b></li>
+          <li>TP를 <b>지웠다</b></li>
+        </ul>
+        <div class="rl-how">재는 법: TP 주문 이력 — 처음 건 값과 그 뒤 움직임 (당긴 것은 괜찮다)</div>
+      </div>
+      <div class="rl-card rl-verdict ok">
+        <div class="rl-head"><span class="rl-title">지킴</span><span class="rl-tag">코인 1</span></div>
+        <ul>
+          <li>위 여섯 가지가 하나도 없다. 손익과 상관없다 — 손절로 끝나도 지켰으면 코인 1.</li>
+          <li>하루에 하나라도 위반이 있으면 그날은 0개 (마이너스로 깎지는 않는다)</li>
+        </ul>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-title">사건</span><span class="rl-sub">위반 아님 · 쉬라는 신호</span></div>
+        <div class="rl-steps">
+          <div class="rl-step"><span>①</span><span><b>수익구간에 들었다</b> — 1차 진입가에서 처음 건 스탑 거리의 2배 이상 유리하게 (예: 스탑 300불 밑 → +600불)</span></div>
+          <div class="rl-step"><span>②</span><span><b>그런데 손실</b> — 수수료 빼기 전 손익이 마이너스 (본전 · 수수료 때문에만 마이너스는 손실 아님)</span></div>
+          <div class="rl-step"><span>③</span><span><b>바로 다음 매매도 손실</b> — 이번엔 수익구간에 안 들었어도. 다음 매매가 본전 · 수익이면 끊긴다</span></div>
+          <div class="rl-step"><span>=</span><span><b>사건</b> — 진입 금지 시작. 밤에도 똑같이</span></div>
+        </div>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-title">냉각</span><span class="rl-sub">사건 시각부터</span></div>
+        <div class="rl-cool">
+          <div>0 ~ 1시간</div><div>진입하면 <b style="color: var(--danger);">큰 위반</b>. 운동해도 안 된다.</div>
+          <div>1 ~ 2시간</div><div>사건 뒤에 시작해 진입 전에 끝난 <b>20분 이상 워치 운동</b>이 있으면 진입 가능. 없으면 큰 위반.</div>
+          <div>2시간 뒤</div><div>진입 가능.</div>
+        </div>
+        <div class="rl-note">까닭 — 몸의 흥분은 약 20분, 스트레스 호르몬은 자극이 끝난 뒤 약 60분. 차트를 계속 보면 자극이 끝나지 않는다. 운동이 「차트를 닫았다」의 증거.</div>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-title">위반이 아닌 것</span></div>
+        <ul>
+          <li>스탑을 옮기는 것 (본전으로 · 다른 자리로)</li>
+          <li>TP를 가까이 당기는 것</li>
+          <li>2차 추가 — 언제든, 단 명목 한도 안에서</li>
+          <li>밤 매매</li>
+          <li>규칙을 지키고 난 손실</li>
+        </ul>
+      </div>
+      <div class="rl-card">
+        <div class="rl-head"><span class="rl-title">11월 기록에 대 보면</span><span class="rl-sub">시험 전 · 참고</span></div>
+        <ul>
+          <li>11-10 2번(2R 넘었다가 손실) → 3번 손실 = <b>19:17 사건</b> → 8초 뒤 4번 숏 진입 → <b>큰 위반</b> (스위칭도 예외 없음)</li>
+          <li>6번(11-11 00:42) 첫 스탑이 27분 뒤 · 걸었다 지우기 두 번 · 마지막 6시간 12분 스탑 없음 → <b>큰 위반</b></li>
+          <li>8번(11:22) 스탑 없음 · 명목 40,746 &gt; 한도 37,885 → <b>큰 위반</b></li>
+          <li>7번(11:04) 스탑은 28초 만에 걸었지만 TP 없음 → 작은 위반</li>
+        </ul>
+        <div class="rl-note">이 규칙이 그때 있었다면 병은 11-10 19:17에 비었다.</div>
+      </div>
+    </div>
+
+    <div class="rl-foot">규칙을 정하는 것은 나. 채점은 손익이 아니라 「지켰나」로.<br>Claude 한도 · 새 시나리오 확인은 기록으로 못 재니 내가 지킨다.</div>
+  </div>
+</div>
+
 <div id="screen-log" class="screen">
   <div class="header">
     <button class="header-back" onclick="goBack('screen-home')">←</button>
@@ -775,6 +964,10 @@
     <div class="setting-item" onclick="openCoinJar(true)">
       <span class="setting-item-label">코인병 보기</span>
       <span class="setting-item-value" id="setting-coinjar">→</span>
+    </div>
+    <div class="setting-item" onclick="openRules()">
+      <span class="setting-item-label">원칙 · 위반 판정</span>
+      <span class="setting-item-value">→</span>
     </div>
     <div class="setting-item" onclick="toggleCoinJarPopup()">
       <span class="setting-item-label">새 채점 때 팝업</span>
@@ -832,7 +1025,7 @@
 
 <script src="coinjar.js"></script>
 <script>
-const APP_VERSION = 'v0.1.14';
+const APP_VERSION = 'v0.1.15';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -2165,6 +2358,19 @@ async function checkCoinJar() {
   if (state.coinJarPopup === false || !d.started) return;
   if (seen && seen.updated === d.updated) return;
   openCoinJar(false);
+}
+function openRules(tab) {
+  closeCoinJar();
+  rulesTab(tab || 'rules');
+  goto('screen-rules');
+}
+function rulesTab(tab) {
+  document.getElementById('rl-rules').classList.toggle('hidden', tab !== 'rules');
+  document.getElementById('rl-judge').classList.toggle('hidden', tab !== 'judge');
+  document.getElementById('rl-tab-rules').classList.toggle('on', tab === 'rules');
+  document.getElementById('rl-tab-judge').classList.toggle('on', tab === 'judge');
+  const c = document.querySelector('#screen-rules .content');
+  if (c) c.scrollTop = 0;
 }
 function toggleCoinJarPopup() {
   state.coinJarPopup = state.coinJarPopup === false;
