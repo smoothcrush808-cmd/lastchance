@@ -259,6 +259,19 @@
   .log-badge.profit { background: var(--success); color: #FFF; }
   .log-badge.loss { background: var(--danger); color: #FFF; }
   .hidden { display: none !important; }
+  /* [v0.1.14] 코인병 팝업 — 새 채점 결과가 있을 때 한 번 */
+  .cj-pop {
+    position: fixed; inset: 0; z-index: 120; background: var(--bg);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: calc(24px + env(safe-area-inset-top)) var(--pad) calc(24px + env(safe-area-inset-bottom));
+  }
+  .cj-pop.active { display: flex; }
+  .cj-pop-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--ink-3); text-transform: uppercase; }
+  .cj-pop-jar { width: 100%; max-width: 260px; margin: 14px 0 6px; }
+  .cj-pop-line { font-size: 14px; color: var(--ink-2); text-align: center; line-height: 1.5; min-height: 21px; }
+  .cj-pop-cool { margin-top: 14px; background: var(--danger); color: #FFF; border-radius: 12px; padding: 12px 16px;
+    font-size: 14px; font-weight: 600; text-align: center; line-height: 1.45; }
+  .cj-pop-close { margin-top: 22px; font-size: 12px; color: var(--ink-3); letter-spacing: 0.04em; }
   ::-webkit-scrollbar { display: none; }
 </style>
 </head>
@@ -758,6 +771,16 @@
       <span class="setting-item-value">JSON ↑</span>
     </div>
 
+    <div class="section-label">코인병</div>
+    <div class="setting-item" onclick="openCoinJar(true)">
+      <span class="setting-item-label">코인병 보기</span>
+      <span class="setting-item-value" id="setting-coinjar">→</span>
+    </div>
+    <div class="setting-item" onclick="toggleCoinJarPopup()">
+      <span class="setting-item-label">새 채점 때 팝업</span>
+      <span class="setting-item-value" id="setting-coinjar-pop">ON</span>
+    </div>
+
     <div class="section-label">아이폰 단축어 연동</div>
     <div class="setting-item" onclick="toggleShortcutPass()">
       <span class="setting-item-label">비트겟을 'LC통과' 단축어로 열기</span>
@@ -791,6 +814,14 @@
 
 </div>
 
+<div class="cj-pop" id="coinjar-pop" onclick="closeCoinJar()" role="dialog" aria-label="코인병">
+  <div class="cj-pop-label">코인병</div>
+  <div class="cj-pop-jar" id="coinjar-pop-jar"></div>
+  <div class="cj-pop-line" id="coinjar-pop-line"></div>
+  <div class="cj-pop-cool hidden" id="coinjar-pop-cool"></div>
+  <div class="cj-pop-close">탭해서 닫기</div>
+</div>
+
 <div class="modal-backdrop" id="modal">
   <div class="modal">
     <div class="modal-title" id="modal-title"></div>
@@ -799,8 +830,9 @@
   </div>
 </div>
 
+<script src="coinjar.js"></script>
 <script>
-const APP_VERSION = 'v0.1.13';
+const APP_VERSION = 'v0.1.14';
 const PRINCIPLES = {
   meta: [
     "실수를 연발하게 만드는 감정의 흐름을 이해하고 명확히 서술하라.",
@@ -883,6 +915,7 @@ function defaultState() {
     scenario: { images: [null, null], uploadedAt: null, expiresAt: null },
     pendingEntry: null, openPosition: null, cooldownUntil: null,
     useShortcutPass: false,
+    coinJarPopup: true,
     records: [], dailyStats: {},
   };
 }
@@ -1753,6 +1786,7 @@ function renderSettings() {
   document.getElementById('setting-seed').textContent = state.seed ? `$${state.seed.toLocaleString()}` : '미설정';
   document.getElementById('setting-risk').textContent = `${state.riskPct}%`;
   document.getElementById('setting-shortcut').textContent = state.useShortcutPass ? 'ON' : 'OFF';
+  document.getElementById('setting-coinjar-pop').textContent = state.coinJarPopup === false ? 'OFF' : 'ON';
   document.getElementById('version-display').textContent = `LAST CHANCE ${APP_VERSION}`;
 
   // 디버그 정보 출력
@@ -2063,8 +2097,85 @@ window.addEventListener('pageshow', () => {
   if (curr === 'screen-home') renderHome();
 });
 
+/* ==================== [v0.1.14] 코인병 ==================== */
+// coins.json은 아침 루틴(매매 볼트 score_daily.py)이 올린다. 앱은 보여 주기만 한다 — 판정하지 않는다.
+// 지난번 본 상태(lc_coinjar_seen)와 비교해 새 채점이면 한 번 팝업, 바뀐 만큼만 움직인다.
+const COINJAR_SEEN_KEY = 'lc_coinjar_seen';
+let coinJarView = null, coinJarData = null, coinJarOpen = false;
+
+async function fetchCoins() {
+  try {
+    const r = await fetch('coins.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+function coinSeen() {
+  try { return JSON.parse(localStorage.getItem(COINJAR_SEEN_KEY) || 'null'); } catch (e) { return null; }
+}
+function coinHHMM(ms) {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function coinLine(d) {
+  if (!d.started) return '시험 시작 전';
+  const L = d.last_day;
+  if (!L) return `시험 시작 ${d.started.slice(5)} · 아직 채점할 매매 없음`;
+  const day = L.day.slice(5).replace('-', '/');
+  if (L.emptied) return `${day} 큰 위반 · 병을 비웠어`;
+  if (L.gain > 0) return `${day} 지킨 포지션 ${L.gain}개 · 코인 +${L.gain}`;
+  return `${day} 안 지킨 매매가 있어 · 코인 0`;
+}
+async function openCoinJar(manual) {
+  const d = manual ? (await fetchCoins()) || coinJarData : coinJarData;
+  if (!d || typeof CoinJar === 'undefined') {
+    if (manual) showModal({ title: '코인병', text: '아직 채점 결과가 없어. 아침 채점 뒤에 다시 봐.', buttons: [{ label: '확인', class: 'btn-primary', onClick: hideModal }] });
+    return;
+  }
+  coinJarData = d;
+  const seen = coinSeen();
+  const pop = document.getElementById('coinjar-pop');
+  pop.classList.add('active'); coinJarOpen = true;
+  document.getElementById('coinjar-pop-line').textContent = '';
+  const cool = document.getElementById('coinjar-pop-cool');
+  if (d.cooling_until && d.cooling_until > Date.now()) {
+    cool.textContent = `냉각 중 · ${coinHHMM(d.cooling_until)}까지 진입 금지` +
+      (d.cooling_until_exercise && d.cooling_until_exercise > Date.now() ? `
+운동 20분이면 ${coinHHMM(d.cooling_until_exercise)}` : '');
+    cool.style.whiteSpace = 'pre-line';
+    cool.classList.remove('hidden');
+  } else cool.classList.add('hidden');
+  if (!coinJarView) coinJarView = CoinJar.create(document.getElementById('coinjar-pop-jar'));
+  const fresh = !seen || seen.updated !== d.updated;
+  const prev = fresh && seen && seen.started === d.started ? seen : d;
+  const emptied = !!(fresh && d.last_day && d.last_day.emptied && (!seen || !seen.last_day || seen.last_day.day !== d.last_day.day));
+  try { localStorage.setItem(COINJAR_SEEN_KEY, JSON.stringify(d)); } catch (e) {}
+  await coinJarView.play(prev, d, { emptied });
+  document.getElementById('coinjar-pop-line').textContent = coinLine(d);
+}
+function closeCoinJar() {
+  document.getElementById('coinjar-pop').classList.remove('active'); coinJarOpen = false;
+}
+async function checkCoinJar() {
+  if (coinJarOpen) return;
+  const d = await fetchCoins();
+  if (!d) return;
+  coinJarData = d;
+  const seen = coinSeen();
+  if (state.coinJarPopup === false || !d.started) return;
+  if (seen && seen.updated === d.updated) return;
+  openCoinJar(false);
+}
+function toggleCoinJarPopup() {
+  state.coinJarPopup = state.coinJarPopup === false;
+  saveState();
+  renderSettings();
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkCoinJar(); });
+
 /* ==================== 초기 실행 ==================== */
 renderHome();
+checkCoinJar();
 </script>
 </body>
 </html>
