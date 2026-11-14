@@ -339,13 +339,13 @@
     <div id="mirror-card" class="mr-card hidden"></div>
     <div id="status-area"></div>
     <div class="section-label">매매 시작</div>
-    <div class="purpose-card" id="card-trading" onclick="startTrading()">
-      <div class="purpose-card-title"><span>TRADING</span><span class="arrow">→</span></div>
-      <div class="purpose-card-desc">신규 진입. 시나리오와 손실액 필수.</div>
-    </div>
     <div class="purpose-card" onclick="startChecking()">
       <div class="purpose-card-title"><span>CHECKING</span><span class="arrow">→</span></div>
       <div class="purpose-card-desc">포지션 확인 · 차트 확인.</div>
+    </div>
+    <div class="purpose-card" id="card-trading" onclick="startTrading()">
+      <div class="purpose-card-title"><span>TRADING</span><span class="arrow">→</span></div>
+      <div class="purpose-card-desc">신규 진입. 시나리오와 손실액 필수.</div>
     </div>
 
     <div class="section-label" style="margin-top: 20px;">비트겟 다녀온 후</div>
@@ -1046,7 +1046,7 @@
 
 <script src="coinjar.js"></script>
 <script>
-const APP_VERSION = 'v0.1.16';
+const APP_VERSION = 'v0.1.17';
 // [v0.1.16] 나인구 무작위 원칙(PRINCIPLES)은 뺐다 — 「말 거울」(mirror.json)의 오늘의 말로 바꿈
 
 const COOLDOWN_PRINCIPLE = "복구 심리가 조금이라도 생겼다고 느껴지면 즉시 차트를 끄고 휴식한다.";
