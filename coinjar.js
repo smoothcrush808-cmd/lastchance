@@ -143,7 +143,7 @@
     function setText(st) {
       nEl.textContent = st.coins; ofEl.textContent = '/ ' + st.jar;
       meta.textContent = st.level + '단계 · 기준액 ' + fmt(st.base) + ' USDT';
-      svg.setAttribute('aria-label', '코인병 ' + st.coins + ' / ' + st.jar);
+      svg.setAttribute('aria-label', 'bottle ' + st.coins + ' / ' + st.jar);
     }
     function say(text, kind, ms) {
       toast.textContent = text; toast.className = 'cj-toast on ' + (kind || '');
