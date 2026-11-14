@@ -851,7 +851,7 @@
         </ul>
       </div>
       <div class="rl-card rl-jar">
-        <div class="rl-head"><span class="rl-title">코인병</span><span class="rl-sub"><a href="#" onclick="event.preventDefault(); openCoinJar(true);" style="color: inherit;">병 보기 →</a></span></div>
+        <div class="rl-head"><span class="rl-title">bottle</span><span class="rl-sub"><a href="#" onclick="event.preventDefault(); openCoinJar(true);" style="color: inherit;">bottle 보기 →</a></span></div>
         <ul>
           <li>지킨 포지션 하나 = <b>코인 1</b> (손익과 상관없음)</li>
           <li>안 지킨 매매가 있는 날 = 그날 코인 0</li>
@@ -982,9 +982,9 @@
       <span class="setting-item-value">JSON ↑</span>
     </div>
 
-    <div class="section-label">코인병</div>
+    <div class="section-label">bottle</div>
     <div class="setting-item" onclick="openCoinJar(true)">
-      <span class="setting-item-label">코인병 보기</span>
+      <span class="setting-item-label">bottle 보기</span>
       <span class="setting-item-value" id="setting-coinjar">→</span>
     </div>
     <div class="setting-item" onclick="openRules()">
@@ -1029,8 +1029,8 @@
 
 </div>
 
-<div class="cj-pop" id="coinjar-pop" onclick="closeCoinJar()" role="dialog" aria-label="코인병">
-  <div class="cj-pop-label">코인병</div>
+<div class="cj-pop" id="coinjar-pop" onclick="closeCoinJar()" role="dialog" aria-label="bottle">
+  <div class="cj-pop-label">bottle</div>
   <div class="cj-pop-jar" id="coinjar-pop-jar"></div>
   <div class="cj-pop-line" id="coinjar-pop-line"></div>
   <div class="cj-pop-cool hidden" id="coinjar-pop-cool"></div>
@@ -1047,7 +1047,7 @@
 
 <script src="coinjar.js"></script>
 <script>
-const APP_VERSION = 'v0.1.18';
+const APP_VERSION = 'v0.1.19';
 // [v0.1.16] 나인구 무작위 원칙(PRINCIPLES)은 뺐다 — 「말 거울」(mirror.json)의 오늘의 말로 바꿈
 
 const COOLDOWN_PRINCIPLE = "복구 심리가 조금이라도 생겼다고 느껴지면 즉시 차트를 끄고 휴식한다.";
@@ -2287,7 +2287,7 @@ function coinLine(d) {
 async function openCoinJar(manual) {
   const d = manual ? (await fetchCoins()) || coinJarData : coinJarData;
   if (!d || typeof CoinJar === 'undefined') {
-    if (manual) showModal({ title: '코인병', text: '아직 채점 결과가 없어. 아침 채점 뒤에 다시 봐.', buttons: [{ label: '확인', class: 'btn-primary', onClick: hideModal }] });
+    if (manual) showModal({ title: 'bottle', text: '아직 채점 결과가 없어. 아침 채점 뒤에 다시 봐.', buttons: [{ label: '확인', class: 'btn-primary', onClick: hideModal }] });
     return;
   }
   coinJarData = d;
