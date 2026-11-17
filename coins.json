@@ -1,11 +1,16 @@
 {
- "coins": 0,
+ "coins": 4,
  "level": 1,
  "jar": 20,
  "base": 1000,
  "started": "2026-11-16",
- "updated": 1794644497906,
- "last_day": null,
+ "updated": 1794951509127,
+ "last_day": {
+  "day": "2026-11-18",
+  "gain": 1,
+  "emptied": false,
+  "note": []
+ },
  "cooling_until": null,
  "cooling_until_exercise": null
 }
