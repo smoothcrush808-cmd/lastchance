@@ -1,13 +1,13 @@
 {
- "coins": 10,
+ "coins": 13,
  "level": 1,
  "jar": 20,
  "base": 1000,
  "started": "2026-11-16",
- "updated": 1795124349005,
+ "updated": 1795482946374,
  "last_day": {
-  "day": "2026-11-20",
-  "gain": 1,
+  "day": "2026-11-23",
+  "gain": 3,
   "emptied": false,
   "note": []
  },
